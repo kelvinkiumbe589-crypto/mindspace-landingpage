@@ -1,10 +1,11 @@
 import MoodTicker from "../components/MoodTicker";
 
-
+import { useNavigate } from "react-router-dom";
 
 
 
 export default function LandingPage() {
+  const navigate = useNavigate();
   return (
     <div style={{ background: "#0d0d14", minHeight: "100vh", color: "#e8e6ff", fontFamily: "system-ui, sans-serif" }}>
 
@@ -44,8 +45,11 @@ export default function LandingPage() {
             border: "1px solid rgba(127,119,221,0.3)",
             background: "transparent", color: "#c4c1f0",
             fontSize: "14px", cursor: "pointer",
-          }}>Log in</button>
-          <button style={{
+          }} onClick={() => navigate("/signin")}
+          >Log in</button>
+          <button 
+          onClick={() => navigate("/signup")}
+          style={{
             padding: "8px 20px", borderRadius: "8px",
             border: "none", background: "#534AB7",
             color: "#fff", fontSize: "14px", cursor: "pointer",
@@ -91,7 +95,9 @@ export default function LandingPage() {
 
         {/* CTAs */}
         <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginBottom: "60px" }}>
-          <button style={{
+          <button 
+           onClick={() => navigate("/signup")}
+           style={{
             padding: "13px 32px", borderRadius: "10px",
             border: "none", background: "#534AB7",
             color: "#fff", fontSize: "15px",
@@ -174,11 +180,14 @@ export default function LandingPage() {
           Free to start. No credit card. Takes 2 minutes to set up.
         </p>
         <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-          <button style={{
+          <button 
+          onClick={() => navigate("/signup")}
+          style={{
             padding: "14px 36px", borderRadius: "10px",
             border: "none", background: "#534AB7",
             color: "#fff", fontSize: "15px", fontWeight: 500, cursor: "pointer",
           }}>Create free account</button>
+          
           <button style={{
             padding: "14px 36px", borderRadius: "10px",
             border: "1px solid rgba(127,119,221,0.3)",
