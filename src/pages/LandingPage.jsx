@@ -206,7 +206,7 @@ export default function LandingPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#4a4870" }}>
           <span>🧠</span> MindSpace
         </div>
-        <div style={{ fontSize: "12px", color: "#4a4870" }}>Built with Java Spring Boot + React</div>
+        <div style={{ fontSize: "12px", color: "#4a4870" }}>@2023 MindSpace. All rights reserved.</div>
         <div style={{ display: "flex", gap: "20px", fontSize: "12px", color: "#4a4870" }}>
           {["Privacy", "Terms", "Contact"].map(l => <span key={l} style={{ cursor: "pointer" }}>{l}</span>)}
         </div>

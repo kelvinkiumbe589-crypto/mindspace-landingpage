@@ -196,7 +196,7 @@ export default function SignIn() {
             onClick={() => navigate("/signup")}
             style={{ color: "#7F77DD", cursor: "pointer", fontWeight: 500 }}
           >
-            Create one free
+            Create one for free
           </span>
         </p>
 
