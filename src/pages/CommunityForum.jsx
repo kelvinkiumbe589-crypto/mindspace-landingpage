@@ -292,7 +292,7 @@ export default function CommunityForum() {
     <div className="flex bg-black min-h-screen text-white font-sans">
       <Sidebar active="Community Forum" userName={userName} />
 
-      <main className="flex-1 px-8 py-6 overflow-y-auto h-screen">
+      <main className="flex-1 px-8 py-6 h-screen flex flex-col overflow-hidden">
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -312,8 +312,8 @@ export default function CommunityForum() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 flex flex-col gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+          <div className="lg:col-span-2 flex flex-col gap-5 min-h-0">
             <div className="flex gap-3">
               <div className="flex-1 flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5">
                 <Search size={16} className="text-zinc-500" />
@@ -359,7 +359,7 @@ export default function CommunityForum() {
               ))}
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 overflow-y-auto min-h-0 flex-1 pr-1">
               {filtered.map((post) => (
                 <div
                   key={post.id}
@@ -478,7 +478,7 @@ export default function CommunityForum() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5 overflow-y-auto min-h-0">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Shield size={16} className="text-indigo-400" />
