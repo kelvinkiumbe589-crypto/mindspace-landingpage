@@ -2,3 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme variables ─────────────────────────────────────────────
+   Used by both the inline-styled pages (var(--x)) and the
+   Tailwind pages (bg-[var(--x)]). Dark is the default. */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d14;
+  --sidebar: #0a0a10;
+  --elevated: #13131c;
+  --card: rgba(255, 255, 255, 0.03);
+  --card-2: rgba(255, 255, 255, 0.04);
+  --card-3: rgba(255, 255, 255, 0.02);
+  --border: rgba(127, 119, 221, 0.15);
+  --text: #e8e6ff;
+  --text-strong: #f0eeff;
+  --text-soft: #c4c1f0;
+  --text-muted: #9d9bc4;
+  --text-muted-2: #8b89b8;
+  --text-dim: #7a7898;
+  --accent: #534ab7;
+  --accent-soft: #a89cf5;
+  --accent-2: #7f77dd;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f2fb;
+  --sidebar: #ffffff;
+  --elevated: #ffffff;
+  --card: rgba(83, 74, 183, 0.045);
+  --card-2: rgba(83, 74, 183, 0.07);
+  --card-3: rgba(83, 74, 183, 0.03);
+  --border: rgba(83, 74, 183, 0.18);
+  --text: #26223c;
+  --text-strong: #1a1730;
+  --text-soft: #3d3960;
+  --text-muted: #5c5780;
+  --text-muted-2: #6b6790;
+  --text-dim: #837fa1;
+  --accent: #534ab7;
+  --accent-soft: #5b50c2;
+  --accent-2: #6d64d6;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}

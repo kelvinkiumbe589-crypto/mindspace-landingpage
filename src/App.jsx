@@ -7,6 +7,7 @@ import MoodJournal from "./pages/MoodJournal";
 import MoodTrends from "./pages/MoodTrends";
 import CommunityForum from "./pages/CommunityForum";
 import FindATherapist from "./pages/FindATherapist";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/mood-trends" element={<MoodTrends />} />
         <Route path="/community-forum" element={<CommunityForum />} />
         <Route path="/find-a-therapist" element={<FindATherapist />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </BrowserRouter>
   );

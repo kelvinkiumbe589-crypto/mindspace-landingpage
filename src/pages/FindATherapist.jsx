@@ -15,36 +15,41 @@ import {
   MapPin,
   Phone,
   Sparkles,
-  BadgeCheck
+  BadgeCheck,
+  DoorOpen,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../theme';
 
 const navItems = [
   { label: 'Dashboard', icon: Home, path: '/dashboard' },
   { label: 'Mood Journal', icon: BookOpen, path: '/mood-journal' },
   { label: 'Mood Trends', icon: BarChart3, path: '/mood-trends' },
   { label: 'Community Forum', icon: MessageCircle, path: '/community-forum' },
-  { label: 'Find a Therapist', icon: Stethoscope, path: '/find-a-therapist',active: true },
+  { label: 'Find a Therapist', icon: Stethoscope, path: '/find-a-therapist' },
+  { label: 'Settings', icon: Settings, path: '/settings' },
 ];
 
 function Sidebar({ active }) {
   const navigate = useNavigate();
 
   return (
-    <aside className="w-64 bg-zinc-950 border-r border-zinc-800 flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
+    <aside className="w-64 bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
       <div className="flex items-center gap-2.5 px-2 mb-6">
         <div className="w-[34px] h-[34px] rounded-[10px] bg-[#534AB7] flex items-center justify-center text-base">
           🧠
         </div>
-        <span className="font-semibold text-white">MindSpace</span>
+        <span className="font-semibold text-[var(--text)]">MindSpace</span>
       </div>
 
-      <div className="flex items-center gap-3 bg-zinc-900 rounded-xl px-3 py-2.5 mb-6">
+      <div className="flex items-center gap-3 bg-[var(--card)] rounded-xl px-3 py-2.5 mb-6">
         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
           T
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-medium text-white">there</p>
-          <p className="text-xs text-zinc-500">citizen</p>
+          <p className="text-sm font-medium text-[var(--text)]">there</p>
+          <p className="text-xs text-[var(--text-dim)]">citizen</p>
         </div>
       </div>
 
@@ -59,7 +64,7 @@ function Sidebar({ active }) {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left ${
                 isActive
                   ? 'bg-indigo-600 text-white font-medium'
-                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--card)] hover:text-[var(--text-soft)]'
               }`}
             >
               <Icon size={18} />
@@ -70,11 +75,14 @@ function Sidebar({ active }) {
       </nav>
 
       <button
-        onClick={() => navigate('/settings')}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 mt-auto text-left"
+        onClick={() => {
+          localStorage.removeItem('mindspace_user');
+          navigate('/');
+        }}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-dim)] hover:bg-[var(--card)] hover:text-[var(--text-soft)] mt-auto text-left"
       >
-        <Settings size={18} />
-        Settings
+        <DoorOpen size={18} />
+        Logout
       </button>
     </aside>
   );
@@ -166,6 +174,7 @@ const therapists = [
 const sessionIcon = { video: Video, 'in-person': MapPin, phone: Phone };
 
 export default function FindATherapist() {
+  const { theme, toggleTheme } = useTheme();
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [query, setQuery] = useState('');
 
@@ -202,7 +211,7 @@ export default function FindATherapist() {
   });
 
   return (
-    <div className="flex bg-black min-h-screen text-white font-sans">
+    <div className="flex bg-[var(--bg)] min-h-screen text-[var(--text)] font-sans">
       <Sidebar active="Find a Therapist" />
 
       <main className="flex-1 px-8 py-6 h-screen flex flex-col overflow-hidden">
@@ -216,10 +225,17 @@ export default function FindATherapist() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="w-9 h-9 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-white transition-colors">
+            <button
+              onClick={toggleTheme}
+              title="Toggle light / dark mode"
+              className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
               <Bell size={18} />
             </button>
-            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold">
+            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
               T
             </div>
           </div>
@@ -228,13 +244,13 @@ export default function FindATherapist() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
           <div className="lg:col-span-2 flex flex-col gap-5 min-h-0">
             <div className="flex gap-3">
-              <div className="flex-1 flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5">
-                <Search size={16} className="text-zinc-500" />
+              <div className="flex-1 flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-2.5">
+                <Search size={16} className="text-[var(--text-dim)]" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search by name or specialty..."
-                  className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-white"
+                  className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-[var(--text)]"
                 />
               </div>
               <button
@@ -242,7 +258,7 @@ export default function FindATherapist() {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border ${
                   showFilters || activeFilterCount > 0
                     ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-300'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                    : 'bg-[var(--card)] border-[var(--border)] text-[var(--text-soft)] hover:border-[var(--border)]'
                 }`}
               >
                 <Filter size={16} /> Filters
@@ -251,7 +267,7 @@ export default function FindATherapist() {
             </div>
 
             {showFilters && (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col gap-4">
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold">Filters</h3>
                   {activeFilterCount > 0 && (
@@ -265,7 +281,7 @@ export default function FindATherapist() {
                 </div>
 
                 <div>
-                  <p className="text-xs text-zinc-400 mb-2">Session type</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-2">Session type</p>
                   <div className="flex gap-2 flex-wrap">
                     {[
                       { type: 'video', label: 'Video' },
@@ -281,7 +297,7 @@ export default function FindATherapist() {
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                             on
                               ? 'bg-indigo-600 border-indigo-600 text-white'
-                              : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                              : 'bg-[var(--card-2)] border-[var(--border)] text-[var(--text-soft)] hover:border-[var(--border)]'
                           }`}
                         >
                           <Icon size={13} /> {label}
@@ -292,7 +308,7 @@ export default function FindATherapist() {
                 </div>
 
                 <div>
-                  <p className="text-xs text-zinc-400 mb-2">Minimum rating</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-2">Minimum rating</p>
                   <div className="flex gap-2 flex-wrap">
                     {[
                       { value: 0, label: 'Any' },
@@ -306,7 +322,7 @@ export default function FindATherapist() {
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                           minRating === value
                             ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                            : 'bg-[var(--card-2)] border-[var(--border)] text-[var(--text-soft)] hover:border-[var(--border)]'
                         }`}
                       >
                         {label}
@@ -322,7 +338,7 @@ export default function FindATherapist() {
                     onChange={(e) => setAvailableOnly(e.target.checked)}
                     className="w-4 h-4 accent-indigo-600"
                   />
-                  <span className="text-xs text-zinc-300">Available now only</span>
+                  <span className="text-xs text-[var(--text-soft)]">Available now only</span>
                 </label>
               </div>
             )}
@@ -335,7 +351,7 @@ export default function FindATherapist() {
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
                     activeSpecialty === s
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                      : 'bg-[var(--card)] text-[var(--text-muted)] hover:text-[var(--text-soft)] border border-[var(--border)]'
                   }`}
                 >
                   {s}
@@ -347,7 +363,7 @@ export default function FindATherapist() {
               {filtered.map((t) => (
                 <div
                   key={t.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col hover:border-zinc-700 transition-colors"
+                  className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col hover:border-[var(--border)] transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div
@@ -357,14 +373,14 @@ export default function FindATherapist() {
                     </div>
                     <div className="leading-tight min-w-0">
                       <p className="text-sm font-semibold truncate">{t.name}</p>
-                      <p className="text-xs text-zinc-500 truncate">{t.title}</p>
+                      <p className="text-xs text-[var(--text-dim)] truncate">{t.title}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1 text-xs text-amber-400 mb-3">
                     <Star size={13} fill="currentColor" />
                     <span className="font-medium">{t.rating}</span>
-                    <span className="text-zinc-500">({t.reviews} reviews)</span>
+                    <span className="text-[var(--text-dim)]">({t.reviews} reviews)</span>
                   </div>
 
                   <div className="flex gap-1.5 flex-wrap mb-3">
@@ -378,12 +394,12 @@ export default function FindATherapist() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2 text-zinc-500 mb-4">
+                  <div className="flex items-center gap-2 text-[var(--text-dim)] mb-4">
                     {t.sessionTypes.map((type) => {
                       const Icon = sessionIcon[type];
                       return <Icon key={type} size={14} />;
                     })}
-                    <span className="text-xs ml-auto text-zinc-300 font-medium">{t.price}</span>
+                    <span className="text-xs ml-auto text-[var(--text-soft)] font-medium">{t.price}</span>
                   </div>
 
                   <button
@@ -391,7 +407,7 @@ export default function FindATherapist() {
                     className={`mt-auto w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${
                       t.available
                         ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                        : 'bg-[var(--card-2)] text-[var(--text-dim)] cursor-not-allowed'
                     }`}
                   >
                     {t.available ? 'Book Session' : 'Currently Full'}
@@ -399,7 +415,7 @@ export default function FindATherapist() {
                 </div>
               ))}
               {filtered.length === 0 && (
-                <p className="text-zinc-500 text-sm text-center py-10 sm:col-span-2">
+                <p className="text-[var(--text-dim)] text-sm text-center py-10 sm:col-span-2">
                   No therapists match your filters.
                 </p>
               )}
@@ -407,15 +423,15 @@ export default function FindATherapist() {
           </div>
 
           <div className="flex flex-col gap-5 overflow-y-auto min-h-0">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles size={16} className="text-indigo-400" />
-                <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--card-2)] text-[var(--text-muted)]">
                   Powered by Gemini
                 </span>
               </div>
               <h3 className="font-semibold text-sm mb-2">Matched for you</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">
                 Your recent entries mention sleep and stress most often, therapists specializing in
                 those areas are highlighted below.
               </p>
@@ -424,23 +440,23 @@ export default function FindATherapist() {
               </button>
             </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
               <h3 className="font-semibold text-sm mb-3">How booking works</h3>
-              <div className="flex flex-col gap-3 text-xs text-zinc-400">
+              <div className="flex flex-col gap-3 text-xs text-[var(--text-muted)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[var(--card-2)] flex items-center justify-center text-[var(--text-soft)] shrink-0">
                     1
                   </div>
                   Browse and pick a therapist that fits
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[var(--card-2)] flex items-center justify-center text-[var(--text-soft)] shrink-0">
                     2
                   </div>
                   Choose a time that works for you
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[var(--card-2)] flex items-center justify-center text-[var(--text-soft)] shrink-0">
                     3
                   </div>
                   Meet by video, phone, or in person
@@ -453,7 +469,7 @@ export default function FindATherapist() {
                 <BadgeCheck size={16} className="text-emerald-400" />
                 <h3 className="font-semibold text-sm">Licensed & verified</h3>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed">
+              <p className="text-xs text-[var(--text-soft)] leading-relaxed">
                 Every therapist on MindSpace is licensed and credential-verified before joining the
                 platform.
               </p>

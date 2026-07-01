@@ -17,7 +17,11 @@ import {
   Sparkles,
   Send,
   X,
+  DoorOpen,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../theme';
 
 const navItems = [
   { label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -25,6 +29,7 @@ const navItems = [
   { label: 'Mood Trends', icon: BarChart3, path: '/mood-trends' },
   { label: 'Community Forum', icon: MessageCircle, path: '/community-forum' },
   { label: 'Find a Therapist', icon: Stethoscope, path: '/find-a-therapist' },
+  { label: 'Settings', icon: Settings, path: '/settings' },
 ];
 
 function Sidebar({ active, userName }) {
@@ -32,21 +37,21 @@ function Sidebar({ active, userName }) {
   const initial = (userName || 'there').charAt(0).toUpperCase();
 
   return (
-    <aside className="w-64 bg-zinc-950 border-r border-zinc-800 flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
+    <aside className="w-64 bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
       <div className="flex items-center gap-2.5 px-2 mb-6">
         <div className="w-[34px] h-[34px] rounded-[10px] bg-[#534AB7] flex items-center justify-center text-base">
           🧠
         </div>
-        <span className="font-semibold text-white">MindSpace</span>
+        <span className="font-semibold text-[var(--text)]">MindSpace</span>
       </div>
 
-      <div className="flex items-center gap-3 bg-zinc-900 rounded-xl px-3 py-2.5 mb-6">
+      <div className="flex items-center gap-3 bg-[var(--card)] rounded-xl px-3 py-2.5 mb-6">
         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
           {initial}
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-medium text-white">{userName || 'there'}</p>
-          <p className="text-xs text-zinc-500">Student</p>
+          <p className="text-sm font-medium text-[var(--text)]">{userName || 'there'}</p>
+          <p className="text-xs text-[var(--text-dim)]">Student</p>
         </div>
       </div>
 
@@ -61,7 +66,7 @@ function Sidebar({ active, userName }) {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left ${
                 isActive
                   ? 'bg-indigo-600 text-white font-medium'
-                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--card)] hover:text-[var(--text-soft)]'
               }`}
             >
               <Icon size={18} />
@@ -72,11 +77,14 @@ function Sidebar({ active, userName }) {
       </nav>
 
       <button
-        onClick={() => navigate('/settings')}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 mt-auto text-left"
+        onClick={() => {
+          localStorage.removeItem('mindspace_user');
+          navigate('/');
+        }}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-dim)] hover:bg-[var(--card)] hover:text-[var(--text-soft)] mt-auto text-left"
       >
-        <Settings size={18} />
-        Settings
+        <DoorOpen size={18} />
+        Logout
       </button>
     </aside>
   );
@@ -162,9 +170,10 @@ const initialPosts = [
   },
 ];
 
-const BOOKMARKS_KEY = 'mindspace_bookmarks';
+const POSTS_KEY = 'mindspace_posts';
 
 export default function CommunityForum() {
+  const { theme, toggleTheme } = useTheme();
   const [activeCategory, setActiveCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [posts, setPosts] = useState(initialPosts);
@@ -191,33 +200,35 @@ export default function CommunityForum() {
       } catch (e) {}
     }
 
-    // Restore saved bookmarks
+    // Load saved posts (shared with the dashboard); seed with samples on first visit
     try {
-      const storedBookmarks = localStorage.getItem(BOOKMARKS_KEY);
-      if (storedBookmarks) {
-        const ids = JSON.parse(storedBookmarks);
-        if (Array.isArray(ids) && ids.length) {
-          setPosts((prev) => prev.map((p) => (ids.includes(p.id) ? { ...p, bookmarked: true } : p)));
-        }
+      const stored = localStorage.getItem(POSTS_KEY);
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed) && parsed.length) {
+        setPosts(parsed);
+      } else {
+        localStorage.setItem(POSTS_KEY, JSON.stringify(initialPosts));
       }
     } catch (e) {}
   }, []);
 
   const initial = userName.charAt(0).toUpperCase();
 
-  const toggleBookmark = (id) => {
+  // Update posts state and persist so the dashboard stays in sync
+  const persistPosts = (updater) => {
     setPosts((prev) => {
-      const next = prev.map((p) => (p.id === id ? { ...p, bookmarked: !p.bookmarked } : p));
-      localStorage.setItem(
-        BOOKMARKS_KEY,
-        JSON.stringify(next.filter((p) => p.bookmarked).map((p) => p.id))
-      );
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem(POSTS_KEY, JSON.stringify(next));
       return next;
     });
   };
 
+  const toggleBookmark = (id) => {
+    persistPosts((prev) => prev.map((p) => (p.id === id ? { ...p, bookmarked: !p.bookmarked } : p)));
+  };
+
   const toggleLike = (id) => {
-    setPosts((prev) =>
+    persistPosts((prev) =>
       prev.map((p) =>
         p.id === id
           ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 }
@@ -233,7 +244,7 @@ export default function CommunityForum() {
   const addComment = (id) => {
     const text = (commentDrafts[id] || '').trim();
     if (!text) return;
-    setPosts((prev) =>
+    persistPosts((prev) =>
       prev.map((p) =>
         p.id === id
           ? {
@@ -269,7 +280,7 @@ export default function CommunityForum() {
       bookmarked: false,
       comments: [],
     };
-    setPosts((prev) => [post, ...prev]);
+    persistPosts((prev) => [post, ...prev]);
     setShowComposer(false);
     setNewTitle('');
     setNewBody('');
@@ -289,7 +300,7 @@ export default function CommunityForum() {
   });
 
   return (
-    <div className="flex bg-black min-h-screen text-white font-sans">
+    <div className="flex bg-[var(--bg)] min-h-screen text-[var(--text)] font-sans">
       <Sidebar active="Community Forum" userName={userName} />
 
       <main className="flex-1 px-8 py-6 h-screen flex flex-col overflow-hidden">
@@ -303,10 +314,17 @@ export default function CommunityForum() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="w-9 h-9 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-white transition-colors">
+            <button
+              onClick={toggleTheme}
+              title="Toggle light / dark mode"
+              className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
               <Bell size={18} />
             </button>
-            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold">
+            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
               {initial}
             </div>
           </div>
@@ -315,13 +333,13 @@ export default function CommunityForum() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
           <div className="lg:col-span-2 flex flex-col gap-5 min-h-0">
             <div className="flex gap-3">
-              <div className="flex-1 flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5">
-                <Search size={16} className="text-zinc-500" />
+              <div className="flex-1 flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-2.5">
+                <Search size={16} className="text-[var(--text-dim)]" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search posts..."
-                  className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-white"
+                  className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-[var(--text)]"
                 />
               </div>
               <button
@@ -329,7 +347,7 @@ export default function CommunityForum() {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border ${
                   showSaved
                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                    : 'bg-[var(--card)] border-[var(--border)] text-[var(--text-soft)] hover:border-[var(--border)]'
                 }`}
               >
                 <Bookmark size={16} fill={showSaved ? 'currentColor' : 'none'} /> Saved
@@ -337,7 +355,7 @@ export default function CommunityForum() {
               </button>
               <button
                 onClick={() => setShowComposer(true)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white transition-colors px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap"
               >
                 <Plus size={16} /> New Post
               </button>
@@ -351,7 +369,7 @@ export default function CommunityForum() {
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
                     activeCategory === cat
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                      : 'bg-[var(--card)] text-[var(--text-muted)] hover:text-[var(--text-soft)] border border-[var(--border)]'
                   }`}
                 >
                   {cat}
@@ -363,7 +381,7 @@ export default function CommunityForum() {
               {filtered.map((post) => (
                 <div
                   key={post.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-colors"
+                  className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--border)] transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div
@@ -373,14 +391,14 @@ export default function CommunityForum() {
                     </div>
                     <div className="leading-tight">
                       <p className="text-sm font-medium">{post.author}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-[var(--text-dim)]">
                         {post.time} · {post.category}
                       </p>
                     </div>
                   </div>
                   <h3 className="font-semibold mb-1.5">{post.title}</h3>
                   {post.body && (
-                    <p className="text-sm text-zinc-400 mb-3 leading-relaxed">{post.body}</p>
+                    <p className="text-sm text-[var(--text-muted)] mb-3 leading-relaxed">{post.body}</p>
                   )}
                   {post.tags.length > 0 && (
                     <div className="flex gap-2 mb-3 flex-wrap">
@@ -394,7 +412,7 @@ export default function CommunityForum() {
                       ))}
                     </div>
                   )}
-                  <div className="flex items-center gap-5 text-zinc-500 text-sm">
+                  <div className="flex items-center gap-5 text-[var(--text-dim)] text-sm">
                     <button
                       onClick={() => toggleLike(post.id)}
                       className={`flex items-center gap-1.5 transition-colors ${
@@ -424,17 +442,17 @@ export default function CommunityForum() {
 
                   {/* Comments */}
                   {openComments[post.id] && (
-                    <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-col gap-3">
+                    <div className="mt-4 pt-4 border-t border-[var(--border)] flex flex-col gap-3">
                       {post.comments.map((c) => (
                         <div key={c.id} className="flex items-start gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-[var(--card-2)] flex items-center justify-center text-xs font-semibold shrink-0">
                             {c.avatar}
                           </div>
-                          <div className="bg-zinc-800 rounded-xl px-3 py-2 flex-1">
-                            <p className="text-xs text-zinc-400 mb-0.5">
-                              <span className="font-medium text-zinc-200">{c.author}</span> · {c.time}
+                          <div className="bg-[var(--card-2)] rounded-xl px-3 py-2 flex-1">
+                            <p className="text-xs text-[var(--text-muted)] mb-0.5">
+                              <span className="font-medium text-[var(--text-soft)]">{c.author}</span> · {c.time}
                             </p>
-                            <p className="text-sm text-zinc-300">{c.text}</p>
+                            <p className="text-sm text-[var(--text-soft)]">{c.text}</p>
                           </div>
                         </div>
                       ))}
@@ -448,11 +466,11 @@ export default function CommunityForum() {
                             if (e.key === 'Enter') addComment(post.id);
                           }}
                           placeholder="Write a supportive reply..."
-                          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm outline-none placeholder-zinc-500 text-white"
+                          className="flex-1 bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none placeholder-zinc-500 text-[var(--text)]"
                         />
                         <button
                           onClick={() => addComment(post.id)}
-                          className="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition-colors flex items-center justify-center shrink-0"
+                          className="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center justify-center shrink-0"
                         >
                           <Send size={15} />
                         </button>
@@ -463,15 +481,15 @@ export default function CommunityForum() {
               ))}
               {filtered.length === 0 &&
                 (showSaved ? (
-                  <div className="text-center py-12 text-zinc-500">
-                    <Bookmark size={28} className="mx-auto mb-3 text-zinc-600" />
-                    <p className="text-sm text-zinc-400 mb-1">No bookmarks yet</p>
+                  <div className="text-center py-12 text-[var(--text-dim)]">
+                    <Bookmark size={28} className="mx-auto mb-3 text-[var(--text-dim)]" />
+                    <p className="text-sm text-[var(--text-muted)] mb-1">No bookmarks yet</p>
                     <p className="text-xs">
                       Tap the bookmark icon on any post to save it here for later.
                     </p>
                   </div>
                 ) : (
-                  <p className="text-zinc-500 text-sm text-center py-10">
+                  <p className="text-[var(--text-dim)] text-sm text-center py-10">
                     No posts match your search.
                   </p>
                 ))}
@@ -479,29 +497,29 @@ export default function CommunityForum() {
           </div>
 
           <div className="flex flex-col gap-5 overflow-y-auto min-h-0">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Shield size={16} className="text-indigo-400" />
                 <h3 className="font-semibold text-sm">Community Guidelines</h3>
               </div>
-              <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">
                 Be kind, keep it anonymous-friendly, and remember this space is peer support, not
                 medical advice.
               </p>
-              <p className="text-xs text-zinc-500 leading-relaxed">
+              <p className="text-xs text-[var(--text-dim)] leading-relaxed">
                 Need immediate support? Visit{' '}
                 <span className="text-indigo-400">Crisis Resources</span> in Settings.
               </p>
             </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
               <h3 className="font-semibold text-sm mb-3">Trending tags</h3>
               <div className="flex flex-wrap gap-2">
                 {['#selfcare', '#anxiety', '#sleep', '#wins', '#motivation', '#boundaries'].map(
                   (tag) => (
                     <span
                       key={tag}
-                      className="text-xs px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300"
+                      className="text-xs px-2.5 py-1 rounded-full bg-[var(--card-2)] text-[var(--text-soft)]"
                     >
                       {tag}
                     </span>
@@ -515,7 +533,7 @@ export default function CommunityForum() {
                 <Sparkles size={16} className="text-emerald-400" />
                 <h3 className="font-semibold text-sm">This week's vibe</h3>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed">
+              <p className="text-xs text-[var(--text-soft)] leading-relaxed">
                 Posts tagged "wins" are up 40% this week, looks like good things are happening 🎉
               </p>
             </div>
@@ -526,58 +544,58 @@ export default function CommunityForum() {
       {/* New Post Modal */}
       {showComposer && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-5">
-          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg bg-[var(--elevated)] border border-[var(--border)] rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold">New Post</h2>
               <button
                 onClick={() => setShowComposer(false)}
-                className="text-zinc-500 hover:text-white transition-colors"
+                className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <label className="text-xs text-zinc-400 mb-1.5 block">Title</label>
+            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Title</label>
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="What's on your mind?"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-white mb-4"
+              className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)] mb-4"
             />
 
-            <label className="text-xs text-zinc-400 mb-1.5 block">Share your thoughts</label>
+            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Share your thoughts</label>
             <textarea
               value={newBody}
               onChange={(e) => setNewBody(e.target.value)}
               rows={4}
               placeholder="Write freely — this is a safe space..."
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-white resize-none mb-4"
+              className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)] resize-none mb-4"
             />
 
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
-                <label className="text-xs text-zinc-400 mb-1.5 block">Category</label>
+                <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Category</label>
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none text-white cursor-pointer"
+                  className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none text-[var(--text)] cursor-pointer"
                 >
                   {categories
                     .filter((c) => c !== 'All')
                     .map((c) => (
-                      <option key={c} value={c} className="bg-zinc-900">
+                      <option key={c} value={c} className="bg-[var(--card)]">
                         {c}
                       </option>
                     ))}
                 </select>
               </div>
               <div className="flex-1">
-                <label className="text-xs text-zinc-400 mb-1.5 block">Tags (comma separated)</label>
+                <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Tags (comma separated)</label>
                 <input
                   value={newTags}
                   onChange={(e) => setNewTags(e.target.value)}
                   placeholder="hopeful, advice-wanted"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-white"
+                  className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)]"
                 />
               </div>
             </div>
@@ -585,7 +603,7 @@ export default function CommunityForum() {
             <button
               onClick={handleNewPost}
               disabled={!newTitle.trim() && !newBody.trim()}
-              className="w-full py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:bg-[var(--card-2)] disabled:text-[var(--text-dim)] disabled:cursor-not-allowed"
             >
               Post to Community
             </button>

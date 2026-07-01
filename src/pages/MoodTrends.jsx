@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DoorOpen } from "lucide-react";
+import { DoorOpen, Sun, Moon } from "lucide-react";
+import { useTheme } from "../theme";
 
 const STORAGE_KEY = "mindspace_entries";
 const DAY_MS = 86400000;
@@ -8,6 +9,7 @@ const EMOTION_COLORS = ["#534AB7", "#7F77DD", "#D85A30", "#9D9BC4", "#1D9E75", "
 
 export default function MoodTrends() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [userName, setUserName] = useState("there");
   const [range, setRange] = useState("Week");
   const [loading, setLoading] = useState(true);
@@ -157,10 +159,10 @@ export default function MoodTrends() {
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#0d0d14", fontFamily: "system-ui, sans-serif", color: "#e8e6ff" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", fontFamily: "system-ui, sans-serif", color: "var(--text)" }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
+      <aside style={{ width: "260px", background: "var(--sidebar)", borderRight: "1px solid var(--border)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px" }}>
           <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>{"\u{1F9E0}"}</div>
           <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
@@ -171,8 +173,8 @@ export default function MoodTrends() {
             {userName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p style={{ fontSize: "13px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>{userName}</p>
-            <p style={{ fontSize: "11px", color: "#8b89b8", margin: 0 }}>Student</p>
+            <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>{userName}</p>
+            <p style={{ fontSize: "11px", color: "var(--text-muted-2)", margin: 0 }}>Student</p>
           </div>
         </div>
 
@@ -186,7 +188,7 @@ export default function MoodTrends() {
                 padding: "10px 12px", borderRadius: "10px",
                 cursor: "pointer", fontSize: "14px",
                 background: item.active ? "rgba(83,74,183,0.18)" : "transparent",
-                color: item.active ? "#a89cf5" : "#9d9bc4",
+                color: item.active ? "var(--accent-soft)" : "var(--text-muted)",
                 fontWeight: item.active ? 600 : 400,
               }}
             >
@@ -197,7 +199,7 @@ export default function MoodTrends() {
 
         <div
           onClick={() => { localStorage.removeItem("mindspace_user"); navigate("/"); }}
-          style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "#7a7898" }}
+          style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "var(--text-dim)" }}
         >
           <DoorOpen size={16} /> Logout
         </div>
@@ -208,26 +210,35 @@ export default function MoodTrends() {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
-            <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>Mood Trends</h1>
-            <p style={{ fontSize: "13px", color: "#8b89b8", marginTop: "4px" }}>Understand your emotional patterns over time</p>
+            <h1 style={{ fontSize: "24px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>Mood Trends</h1>
+            <p style={{ fontSize: "13px", color: "var(--text-muted-2)", marginTop: "4px" }}>Understand your emotional patterns over time</p>
           </div>
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "3px" }}>
-            {["Week", "Month", "Year"].map(t => (
-              <span
-                key={t}
-                onClick={() => setRange(t)}
-                style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer", background: range === t ? "#534AB7" : "transparent", color: range === t ? "#fff" : "#9d9bc4", fontWeight: range === t ? 600 : 400 }}
-              >{t}</span>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              onClick={toggleTheme}
+              title="Toggle light / dark mode"
+              style={{ width: "40px", height: "40px", borderRadius: "50%", background: "var(--card-2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text-muted)" }}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </div>
+            <div style={{ display: "flex", background: "var(--card-2)", borderRadius: "10px", padding: "3px" }}>
+              {["Week", "Month", "Year"].map(t => (
+                <span
+                  key={t}
+                  onClick={() => setRange(t)}
+                  style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer", background: range === t ? "#534AB7" : "transparent", color: range === t ? "#fff" : "var(--text-muted)", fontWeight: range === t ? 600 : 400 }}
+                >{t}</span>
+              ))}
+            </div>
           </div>
         </div>
 
         {loading ? (
-          <p style={{ color: "#7a7898", fontSize: "14px" }}>Loading your trends...</p>
+          <p style={{ color: "var(--text-dim)", fontSize: "14px" }}>Loading your trends...</p>
         ) : !hasData ? (
-          <div style={{ textAlign: "center", padding: "80px 20px", color: "#7a7898" }}>
+          <div style={{ textAlign: "center", padding: "80px 20px", color: "var(--text-dim)" }}>
             <p style={{ fontSize: "36px", marginBottom: "12px" }}>📊</p>
-            <p style={{ fontSize: "15px", color: "#c4c1f0", marginBottom: "6px" }}>No mood data yet</p>
+            <p style={{ fontSize: "15px", color: "var(--text-soft)", marginBottom: "6px" }}>No mood data yet</p>
             <p style={{ fontSize: "13px", marginBottom: "20px" }}>Log a few entries in your Mood Journal and your trends will appear here.</p>
             <button
               onClick={() => navigate("/mood-journal")}
@@ -240,9 +251,9 @@ export default function MoodTrends() {
           <>
             {/* Summary stat cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
-              <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "14px", padding: "18px" }}>
-                <p style={{ fontSize: "12px", color: "#c4c1f0", margin: 0 }}>Average mood</p>
-                <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{avg}<span style={{ fontSize: "13px", color: "#9d9bc4", fontWeight: 400 }}> / 10</span></p>
+              <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-soft)", margin: 0 }}>Average mood</p>
+                <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{avg}<span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 400 }}> / 10</span></p>
               </div>
               <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.2)", borderRadius: "14px", padding: "18px" }}>
                 <p style={{ fontSize: "12px", color: "#9fe8c8", margin: 0 }}>Best {range === "Year" ? "month" : range === "Month" ? "week" : "day"}</p>
@@ -252,17 +263,17 @@ export default function MoodTrends() {
                 <p style={{ fontSize: "12px", color: "#f0b89a", margin: 0 }}>Toughest {range === "Year" ? "month" : range === "Month" ? "week" : "day"}</p>
                 <p style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{worst?.label || "—"} <span style={{ fontSize: "13px", color: "#f0a07a", fontWeight: 400 }}>{min}/10</span></p>
               </div>
-              <div style={{ background: "rgba(127,119,221,0.12)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "14px", padding: "18px" }}>
-                <p style={{ fontSize: "12px", color: "#c4c1f0", margin: 0 }}>Entries logged</p>
+              <div style={{ background: "var(--border)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-soft)", margin: 0 }}>Entries logged</p>
                 <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{entries.length}</p>
               </div>
             </div>
 
             {/* Main chart */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "28px", marginBottom: "20px" }}>
-              <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "#f0eeff" }}>Mood over time</h2>
+            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px", marginBottom: "20px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "var(--text-strong)" }}>Mood over time</h2>
               {points.length === 0 ? (
-                <p style={{ color: "#7a7898", fontSize: "13px" }}>No entries in this range yet. Try a wider range or log a new entry.</p>
+                <p style={{ color: "var(--text-dim)", fontSize: "13px" }}>No entries in this range yet. Try a wider range or log a new entry.</p>
               ) : (
                 <>
                   <svg viewBox="0 0 660 240" style={{ width: "100%", height: "240px" }}>
@@ -281,7 +292,7 @@ export default function MoodTrends() {
                       <circle key={i} cx={p.x} cy={p.y} r="5" fill="#534AB7" stroke="#0d0d14" strokeWidth="2" />
                     ))}
                   </svg>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#7a7898", marginTop: "4px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
                     {points.map((p, i) => <span key={i}>{p.label}</span>)}
                   </div>
                 </>
@@ -291,19 +302,19 @@ export default function MoodTrends() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
 
               {/* Emotion frequency */}
-              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
-                <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "#f0eeff" }}>Most logged emotions</h2>
+              <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
+                <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "var(--text-strong)" }}>Most logged emotions</h2>
                 {emotionFrequency.length === 0 ? (
-                  <p style={{ color: "#7a7898", fontSize: "13px" }}>Tag your emotions when journaling to see them here.</p>
+                  <p style={{ color: "var(--text-dim)", fontSize: "13px" }}>Tag your emotions when journaling to see them here.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                     {emotionFrequency.map(e => (
                       <div key={e.tag}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                          <span style={{ fontSize: "13px", color: "#c4c1f0", textTransform: "capitalize" }}>{e.tag}</span>
-                          <span style={{ fontSize: "12px", color: "#7a7898" }}>{e.count}x</span>
+                          <span style={{ fontSize: "13px", color: "var(--text-soft)", textTransform: "capitalize" }}>{e.tag}</span>
+                          <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>{e.count}x</span>
                         </div>
-                        <div style={{ height: "8px", background: "rgba(255,255,255,0.04)", borderRadius: "10px", overflow: "hidden" }}>
+                        <div style={{ height: "8px", background: "var(--card-2)", borderRadius: "10px", overflow: "hidden" }}>
                           <div style={{ width: `${(e.count / maxFreq) * 100}%`, height: "100%", background: e.color, borderRadius: "10px" }} />
                         </div>
                       </div>
@@ -313,14 +324,14 @@ export default function MoodTrends() {
               </div>
 
               {/* Weekday pattern */}
-              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
-                <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "#f0eeff" }}>Mood by day of week</h2>
+              <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
+                <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "var(--text-strong)" }}>Mood by day of week</h2>
                 <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", height: "160px", gap: "8px" }}>
                   {weekdayAverages.map(d => (
                     <div key={d.day} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", flex: 1, height: "100%", justifyContent: "flex-end" }}>
-                      <span style={{ fontSize: "11px", color: "#a89cf5", fontWeight: 600 }}>{d.avg || "—"}</span>
+                      <span style={{ fontSize: "11px", color: "var(--accent-soft)", fontWeight: 600 }}>{d.avg || "—"}</span>
                       <div style={{ width: "100%", height: `${(d.avg / maxWeekday) * 120}px`, minHeight: d.avg ? "4px" : "0", background: "linear-gradient(180deg, #7F77DD, #534AB7)", borderRadius: "8px 8px 0 0" }} />
-                      <span style={{ fontSize: "11px", color: "#7a7898" }}>{d.day}</span>
+                      <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>{d.day}</span>
                     </div>
                   ))}
                 </div>
@@ -328,10 +339,10 @@ export default function MoodTrends() {
             </div>
 
             {/* Auto-generated Pattern Insight */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px", marginTop: "20px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "#a89cf5", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", display: "inline-block", marginBottom: "14px" }}>{"✨"} Pattern insight</span>
-              <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "10px", color: "#f0eeff" }}>What your entries show</h2>
-              <p style={{ fontSize: "13px", color: "#9d9bc4", lineHeight: 1.7 }}>{buildInsight()}</p>
+            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px", marginTop: "20px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-soft)", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", display: "inline-block", marginBottom: "14px" }}>{"✨"} Pattern insight</span>
+              <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "10px", color: "var(--text-strong)" }}>What your entries show</h2>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.7 }}>{buildInsight()}</p>
             </div>
           </>
         )}
