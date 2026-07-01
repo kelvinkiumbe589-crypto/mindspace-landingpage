@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const STORAGE_KEY = "mindspace_entries";
+
 export default function MoodJournal() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("there");
@@ -44,77 +46,72 @@ export default function MoodJournal() {
         setUserName(user.name ? user.name.split(" ")[0] : "there");
       } catch (e) {}
     }
-    fetchEntries();
+    loadEntries();
   }, []);
 
-  const fetchEntries = async () => {
+  const loadEntries = () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("mindspace_token");
-      const response = await fetch("http://localhost:8080/api/moods", {
-        headers: { "Authorization": `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setEntries(Array.isArray(data) ? data : []);
-      } else {
-        setEntries(sampleEntries);
-      }
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      setEntries(Array.isArray(parsed) ? parsed : []);
     } catch (err) {
-      setEntries(sampleEntries);
+      setEntries([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const sampleEntries = [
-    { id: 1, date: "Today, 8:14am", moodScore: 8, emoji: "😊", text: "Slept better than usual last night. Morning lecture felt manageable for once — maybe the routine is starting to stick.", tags: ["hopeful", "calm", "tired"] },
-    { id: 2, date: "Yesterday, 10:45pm", moodScore: 4, emoji: "😟", text: "Deadline tomorrow is stressing me out. I know I can get it done but the pressure is heavy right now.", tags: ["anxious", "focused"] },
-    { id: 3, date: "Mon, Jun 28", moodScore: 9, emoji: "😄", text: "Had coffee with friends on the quad. Hadn't laughed like that in weeks. Felt like myself again.", tags: ["happy", "social", "energised"] },
-    { id: 4, date: "Sun, Jun 27", moodScore: 6, emoji: "🙂", text: "Quiet day. Caught up on readings and did some laundry. Nothing exciting but it felt productive.", tags: ["calm", "focused"] },
-    { id: 5, date: "Sat, Jun 26", moodScore: 3, emoji: "😢", text: "Missed home a lot today. Called my mum and it helped a little, but still feeling low.", tags: ["lonely", "tired"] },
-  ];
+  const persist = (list) => {
+    setEntries(list);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  };
+
+  const formatDate = (d) => {
+    const time = d
+      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      .toLowerCase()
+      .replace(/\s/g, "");
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
+    if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
+    return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  };
 
   const toggleTag = (tag) => {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
-  const handleSaveEntry = async () => {
+  const resetComposer = () => {
+    setShowComposer(false);
+    setMood(null);
+    setMoodScore(7);
+    setJournalText("");
+    setSelectedTags([]);
+  };
+
+  const handleSaveEntry = () => {
     if (!mood) return;
     setSaving(true);
-    try {
-      const token = localStorage.getItem("mindspace_token");
-      const response = await fetch("http://localhost:8080/api/moods", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ moodScore, journalText, emotions: selectedTags.join(",") }),
-      });
-      if (response.ok) {
-        await fetchEntries();
-      } else {
-        // optimistic local add as fallback
-        const newEntry = {
-          id: Date.now(), date: "Just now",
-          moodScore, emoji: moods.find(m => m.label === mood)?.emoji || "🙂",
-          text: journalText, tags: selectedTags,
-        };
-        setEntries([newEntry, ...entries]);
-      }
-    } catch (err) {
-      const newEntry = {
-        id: Date.now(), date: "Just now",
-        moodScore, emoji: moods.find(m => m.label === mood)?.emoji || "🙂",
-        text: journalText, tags: selectedTags,
-      };
-      setEntries([newEntry, ...entries]);
-    } finally {
-      setSaving(false);
-      setShowComposer(false);
-      setMood(null);
-      setMoodScore(7);
-      setJournalText("");
-      setSelectedTags([]);
-    }
+    const now = new Date();
+    const newEntry = {
+      id: now.getTime(),
+      timestamp: now.getTime(),
+      date: formatDate(now),
+      moodScore,
+      emoji: moods.find(m => m.label === mood)?.emoji || "🙂",
+      text: journalText.trim(),
+      tags: selectedTags,
+    };
+    persist([newEntry, ...entries]);
+    setSaving(false);
+    resetComposer();
+  };
+
+  const handleDelete = (id) => {
+    persist(entries.filter(e => e.id !== id));
   };
 
   const filteredEntries = entries.filter(entry => {
@@ -177,7 +174,7 @@ export default function MoodJournal() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
             <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>Mood Journal</h1>
-            <p style={{ fontSize: "13px", color: "#8b89b8", marginTop: "4px" }}>{entries.length} entries · Your private space to reflect</p>
+            <p style={{ fontSize: "13px", color: "#8b89b8", marginTop: "4px" }}>{entries.length} {entries.length === 1 ? "entry" : "entries"} · Your private space to reflect</p>
           </div>
           <button
             onClick={() => setShowComposer(true)}
@@ -213,7 +210,7 @@ export default function MoodJournal() {
             <div style={{ width: "100%", maxWidth: "540px", background: "#13131c", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "20px", padding: "28px", maxHeight: "90vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>New journal entry</h2>
-                <span onClick={() => setShowComposer(false)} style={{ cursor: "pointer", fontSize: "18px", color: "#7a7898" }}>✕</span>
+                <span onClick={resetComposer} style={{ cursor: "pointer", fontSize: "18px", color: "#7a7898" }}>✕</span>
               </div>
 
               <p style={{ fontSize: "13px", color: "#9d9bc4", marginBottom: "12px" }}>How are you feeling?</p>
@@ -270,10 +267,22 @@ export default function MoodJournal() {
         {/* Entries List */}
         {loading ? (
           <p style={{ color: "#7a7898", fontSize: "14px" }}>Loading your entries...</p>
+        ) : entries.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "70px 20px", color: "#7a7898" }}>
+            <p style={{ fontSize: "36px", marginBottom: "12px" }}>📓</p>
+            <p style={{ fontSize: "15px", color: "#c4c1f0", marginBottom: "6px" }}>Your journal is empty</p>
+            <p style={{ fontSize: "13px", marginBottom: "20px" }}>Write your first entry to start tracking how you feel.</p>
+            <button
+              onClick={() => setShowComposer(true)}
+              style={{ padding: "11px 22px", borderRadius: "12px", border: "none", background: "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
+            >
+              + Write your first entry
+            </button>
+          </div>
         ) : filteredEntries.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px", color: "#7a7898" }}>
-            <p style={{ fontSize: "32px", marginBottom: "12px" }}>📓</p>
-            <p style={{ fontSize: "14px" }}>No entries match your search. Try a different filter or write your first entry.</p>
+            <p style={{ fontSize: "32px", marginBottom: "12px" }}>🔍</p>
+            <p style={{ fontSize: "14px" }}>No entries match your search. Try a different filter or search term.</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -287,8 +296,13 @@ export default function MoodJournal() {
                       <p style={{ fontSize: "11px", color: "#7a7898", margin: 0 }}>Mood score: {entry.moodScore}/10</p>
                     </div>
                   </div>
+                  <span
+                    onClick={() => handleDelete(entry.id)}
+                    title="Delete entry"
+                    style={{ cursor: "pointer", fontSize: "14px", color: "#7a7898", padding: "4px" }}
+                  >🗑️</span>
                 </div>
-                <p style={{ fontSize: "14px", color: "#c4c1f0", lineHeight: 1.6, marginBottom: "14px" }}>{entry.text}</p>
+                {entry.text && <p style={{ fontSize: "14px", color: "#c4c1f0", lineHeight: 1.6, marginBottom: "14px" }}>{entry.text}</p>}
                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                   {(entry.tags || []).map(tag => (
                     <span key={tag} style={{ fontSize: "11px", padding: "4px 12px", borderRadius: "20px", background: "rgba(83,74,183,0.15)", color: "#a89cf5" }}>{tag}</span>
@@ -302,4 +316,3 @@ export default function MoodJournal() {
     </div>
   );
 }
-
