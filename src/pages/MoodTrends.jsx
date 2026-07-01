@@ -1,19 +1,40 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function MoodTrends() {
+export default function MoodJournal() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState("there");
-  const [range, setRange] = useState("Week");
-  const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [filterEmotion, setFilterEmotion] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [showComposer, setShowComposer] = useState(false);
+
+  // Composer state
+  const [mood, setMood] = useState(null);
+  const [moodScore, setMoodScore] = useState(7);
+  const [journalText, setJournalText] = useState("");
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const moods = [
+    { emoji: "😢", label: "Rough", value: 2 },
+    { emoji: "😟", label: "Low", value: 4 },
+    { emoji: "😐", label: "Okay", value: 5 },
+    { emoji: "🙂", label: "Good", value: 7 },
+    { emoji: "😄", label: "Great", value: 9 },
+  ];
+
+  const emotionTags = ["happy", "calm", "anxious", "tired", "hopeful", "focused", "social", "energised", "stressed", "grateful", "lonely", "motivated"];
 
   const sidebarItems = [
     { icon: "🏠", label: "Dashboard", path: "/dashboard" },
-    { icon: "📓", label: "Mood Journal", path: "/journal" },
-    { icon: "📊", label: "Mood Trends", path: "/trends", active: true },
-    { icon: "💬", label: "Community Forum", path: "/forum" },
-    { icon: "🩺", label: "Find a Therapist", path: "/therapists" },
+    { icon: "📓", label: "Mood Journal", path: "/mood-journal", active: true },
+    { icon: "📊", label: "Mood Trends", path: "/mood-trends" },
+    { icon: "💬", label: "Community Forum", path: "/community-forum" },
+    { icon: "🩺", label: "Find a Therapist", path: "/find-a-therapist" },
     { icon: "⚙️", label: "Settings", path: "/settings" },
   ];
 
@@ -25,11 +46,48 @@ export default function MoodTrends() {
         setUserName(user.name ? user.name.split(" ")[0] : "there");
       } catch (e) {}
     }
-    fetchData();
-  }, [range]);
+    fetchEntries();
+  }, []);
 
-  const fetchData = async () => {
+  // Maps a 1-10 mood score to an emoji for display
+  const getEmojiForScore = (score) => {
+    if (score <= 2) return "😢";
+    if (score <= 4) return "😟";
+    if (score <= 5) return "😐";
+    if (score <= 7) return "🙂";
+    return "😄";
+  };
+
+  // Formats the backend's loggedAt timestamp into a friendly label
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+    if (date.toDateString() === now.toDateString()) return `Today, ${time}`;
+    if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
+    return `${date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}, ${time}`;
+  };
+
+  // Converts a raw MoodResponse from the API into the shape this page renders
+  const transformEntry = (apiEntry) => ({
+    id: apiEntry.id,
+    date: formatDate(apiEntry.loggedAt),
+    moodScore: apiEntry.moodScore,
+    emoji: getEmojiForScore(apiEntry.moodScore),
+    text: apiEntry.journalText || "",
+    tags: apiEntry.emotions ? apiEntry.emotions.split(",").map(t => t.trim()).filter(Boolean) : [],
+    aiInsight: apiEntry.aiInsight || null,
+  });
+
+  const fetchEntries = async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const token = localStorage.getItem("mindspace_token");
       const response = await fetch("http://localhost:8080/api/moods", {
@@ -37,69 +95,75 @@ export default function MoodTrends() {
       });
       if (response.ok) {
         const data = await response.json();
-        setEntries(Array.isArray(data) && data.length > 0 ? data : sampleData[range]);
+        const list = Array.isArray(data) ? data : [];
+        const sorted = [...list].sort((a, b) => new Date(b.loggedAt || 0) - new Date(a.loggedAt || 0));
+        setEntries(sorted.map(transformEntry));
       } else {
-        setEntries(sampleData[range]);
+        setEntries([]);
+        setFetchError(true);
       }
     } catch (err) {
-      setEntries(sampleData[range]);
+      setEntries([]);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const sampleData = {
-    Week: [
-      { label: "Mon", score: 6 }, { label: "Tue", score: 6.5 }, { label: "Wed", score: 4 },
-      { label: "Thu", score: 6.8 }, { label: "Fri", score: 7.5 }, { label: "Sat", score: 8.2 }, { label: "Sun", score: 7.2 },
-    ],
-    Month: [
-      { label: "Wk 1", score: 5.8 }, { label: "Wk 2", score: 6.4 }, { label: "Wk 3", score: 6.9 }, { label: "Wk 4", score: 7.3 },
-    ],
-    Year: [
-      { label: "Jan", score: 5.5 }, { label: "Feb", score: 5.9 }, { label: "Mar", score: 6.1 }, { label: "Apr", score: 6.4 },
-      { label: "May", score: 6.0 }, { label: "Jun", score: 7.2 },
-    ],
+  const toggleTag = (tag) => {
+    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
-  const chartData = entries.length > 0 ? entries : sampleData[range];
-  const scores = chartData.map(d => d.score ?? d.moodScore ?? 5);
-  const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
-  const max = Math.max(...scores);
-  const min = Math.min(...scores);
-  const best = chartData[scores.indexOf(max)];
-  const worst = chartData[scores.indexOf(min)];
+  const openComposer = () => {
+    setSaveError("");
+    setShowComposer(true);
+  };
 
-  const emotionFrequency = [
-    { tag: "calm", count: 14, color: "#534AB7" },
-    { tag: "hopeful", count: 11, color: "#7F77DD" },
-    { tag: "anxious", count: 9, color: "#D85A30" },
-    { tag: "tired", count: 8, color: "#9D9BC4" },
-    { tag: "happy", count: 7, color: "#1D9E75" },
-    { tag: "focused", count: 6, color: "#5B8FD8" },
-  ];
-  const maxFreq = Math.max(...emotionFrequency.map(e => e.count));
+  const closeComposer = () => {
+    setShowComposer(false);
+    setSaveError("");
+  };
 
-  const weekdayAverages = [
-    { day: "Mon", avg: 6.1 }, { day: "Tue", avg: 6.4 }, { day: "Wed", avg: 5.2 },
-    { day: "Thu", avg: 6.8 }, { day: "Fri", avg: 7.6 }, { day: "Sat", avg: 7.9 }, { day: "Sun", avg: 7.1 },
-  ];
+  const handleSaveEntry = async () => {
+    if (!mood) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      const token = localStorage.getItem("mindspace_token");
+      const response = await fetch("http://localhost:8080/api/moods", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ moodScore, journalText, emotions: selectedTags.join(",") }),
+      });
 
-  const points = chartData.map((d, i) => {
-    const score = d.score ?? d.moodScore ?? 5;
-    const x = (i * 660) / Math.max(chartData.length - 1, 1);
-    const y = 220 - (score * 20);
-    return { x, y, score, label: d.label ?? d.date ?? "" };
+      if (response.ok) {
+        await fetchEntries();
+        setShowComposer(false);
+        setMood(null);
+        setMoodScore(7);
+        setJournalText("");
+        setSelectedTags([]);
+      } else {
+        setSaveError("Couldn't save your entry. Please try again.");
+      }
+    } catch (err) {
+      setSaveError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredEntries = entries.filter(entry => {
+    const matchesEmotion = filterEmotion === "all" || (entry.tags || []).includes(filterEmotion);
+    const matchesSearch = !searchText || (entry.text || "").toLowerCase().includes(searchText.toLowerCase());
+    return matchesEmotion && matchesSearch;
   });
-
-  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = `${linePath} L ${points[points.length - 1]?.x || 0} 220 L 0 220 Z`;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0d0d14", fontFamily: "system-ui, sans-serif", color: "#e8e6ff" }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column" }}>
+      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px" }}>
           <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>🧠</div>
           <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
@@ -145,118 +209,147 @@ export default function MoodTrends() {
       {/* MAIN */}
       <main style={{ flex: 1, padding: "28px 36px", overflowY: "auto" }}>
 
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
-            <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>Mood Trends</h1>
-            <p style={{ fontSize: "13px", color: "#8b89b8", marginTop: "4px" }}>Understand your emotional patterns over time</p>
+            <h1 style={{ fontSize: "24px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>Mood Journal</h1>
+            <p style={{ fontSize: "13px", color: "#8b89b8", marginTop: "4px" }}>{entries.length} entries · Your private space to reflect</p>
           </div>
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: "10px", padding: "3px" }}>
-            {["Week", "Month", "Year"].map(t => (
-              <span
-                key={t}
-                onClick={() => setRange(t)}
-                style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer", background: range === t ? "#534AB7" : "transparent", color: range === t ? "#fff" : "#9d9bc4", fontWeight: range === t ? 600 : 400 }}
-              >{t}</span>
+          <button
+            onClick={openComposer}
+            style={{ display: "flex", alignItems: "center", gap: "8px", padding: "11px 20px", borderRadius: "12px", border: "none", background: "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}
+          >
+            <span>+</span> New entry
+          </button>
+        </div>
+
+        {/* Search + Filter */}
+        <div style={{ display: "flex", gap: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
+          <input
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            placeholder="🔍 Search your entries..."
+            style={{ flex: 1, minWidth: "240px", padding: "11px 16px", borderRadius: "12px", border: "1px solid rgba(127,119,221,0.15)", background: "rgba(255,255,255,0.03)", color: "#e8e6ff", fontSize: "13px", outline: "none" }}
+          />
+          <select
+            value={filterEmotion}
+            onChange={e => setFilterEmotion(e.target.value)}
+            style={{ padding: "11px 16px", borderRadius: "12px", border: "1px solid rgba(127,119,221,0.15)", background: "rgba(255,255,255,0.03)", color: "#e8e6ff", fontSize: "13px", outline: "none", cursor: "pointer" }}
+          >
+            <option value="all" style={{ background: "#0d0d14" }}>All emotions</option>
+            {emotionTags.map(tag => (
+              <option key={tag} value={tag} style={{ background: "#0d0d14" }}>{tag}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Composer Modal */}
+        {showComposer && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "20px" }}>
+            <div style={{ width: "100%", maxWidth: "540px", background: "#13131c", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "20px", padding: "28px", maxHeight: "90vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>New journal entry</h2>
+                <span onClick={closeComposer} style={{ cursor: "pointer", fontSize: "18px", color: "#7a7898" }}>✕</span>
+              </div>
+
+              <p style={{ fontSize: "13px", color: "#9d9bc4", marginBottom: "12px" }}>How are you feeling?</p>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
+                {moods.map(m => (
+                  <div key={m.label} onClick={() => { setMood(m.label); setMoodScore(m.value); }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                    <div style={{
+                      width: "48px", height: "48px", borderRadius: "50%",
+                      background: mood === m.label ? "rgba(83,74,183,0.25)" : "rgba(255,255,255,0.04)",
+                      border: mood === m.label ? "2px solid #534AB7" : "1px solid rgba(127,119,221,0.15)",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px",
+                    }}>{m.emoji}</div>
+                    <span style={{ fontSize: "11px", color: mood === m.label ? "#a89cf5" : "#7a7898" }}>{m.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p style={{ fontSize: "13px", color: "#9d9bc4", marginBottom: "10px" }}>Tag your emotions</p>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
+                {emotionTags.map(tag => (
+                  <span
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    style={{
+                      fontSize: "12px", padding: "6px 14px", borderRadius: "20px", cursor: "pointer",
+                      background: selectedTags.includes(tag) ? "#534AB7" : "rgba(255,255,255,0.04)",
+                      color: selectedTags.includes(tag) ? "#fff" : "#9d9bc4",
+                      border: selectedTags.includes(tag) ? "1px solid #534AB7" : "1px solid rgba(127,119,221,0.15)",
+                    }}
+                  >{tag}</span>
+                ))}
+              </div>
+
+              <p style={{ fontSize: "13px", color: "#9d9bc4", marginBottom: "10px" }}>What's on your mind?</p>
+              <textarea
+                value={journalText}
+                onChange={e => setJournalText(e.target.value)}
+                placeholder="Write freely — this space is just for you..."
+                rows={5}
+                style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid rgba(127,119,221,0.15)", background: "rgba(255,255,255,0.03)", color: "#e8e6ff", fontSize: "13px", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: "16px", fontFamily: "inherit" }}
+              />
+
+              {saveError && (
+                <p style={{ fontSize: "12px", color: "#f87171", marginBottom: "12px" }}>{saveError}</p>
+              )}
+
+              <button
+                onClick={handleSaveEntry}
+                disabled={!mood || saving}
+                style={{ width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: !mood ? "rgba(83,74,183,0.3)" : "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: !mood ? "not-allowed" : "pointer" }}
+              >
+                {saving ? "Saving..." : "Save entry"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Entries List */}
+        {loading ? (
+          <p style={{ color: "#7a7898", fontSize: "14px" }}>Loading your entries...</p>
+        ) : fetchError ? (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: "#7a7898" }}>
+            <p style={{ fontSize: "32px", marginBottom: "12px" }}>⚠️</p>
+            <p style={{ fontSize: "14px" }}>Couldn't load your entries. Make sure the server is running, then refresh.</p>
+          </div>
+        ) : entries.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: "#7a7898" }}>
+            <p style={{ fontSize: "32px", marginBottom: "12px" }}>📓</p>
+            <p style={{ fontSize: "14px" }}>No entries yet. Write your first one to start your journal.</p>
+          </div>
+        ) : filteredEntries.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: "#7a7898" }}>
+            <p style={{ fontSize: "32px", marginBottom: "12px" }}>🔍</p>
+            <p style={{ fontSize: "14px" }}>No entries match your search or filter.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {filteredEntries.map(entry => (
+              <div key={entry.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "22px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "22px" }}>{entry.emoji}</span>
+                    <div>
+                      <p style={{ fontSize: "13px", color: "#c4c1f0", margin: 0, fontWeight: 500 }}>{entry.date}</p>
+                      <p style={{ fontSize: "11px", color: "#7a7898", margin: 0 }}>Mood score: {entry.moodScore}/10</p>
+                    </div>
+                  </div>
+                </div>
+                <p style={{ fontSize: "14px", color: "#c4c1f0", lineHeight: 1.6, marginBottom: "14px" }}>{entry.text}</p>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {(entry.tags || []).map(tag => (
+                    <span key={tag} style={{ fontSize: "11px", padding: "4px 12px", borderRadius: "20px", background: "rgba(83,74,183,0.15)", color: "#a89cf5" }}>{tag}</span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
-        </div>
-
-        {/* Summary stat cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
-          <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "14px", padding: "18px" }}>
-            <p style={{ fontSize: "12px", color: "#c4c1f0", margin: 0 }}>Average mood</p>
-            <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{avg}<span style={{ fontSize: "13px", color: "#9d9bc4", fontWeight: 400 }}> / 10</span></p>
-          </div>
-          <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.2)", borderRadius: "14px", padding: "18px" }}>
-            <p style={{ fontSize: "12px", color: "#9fe8c8", margin: 0 }}>Best day</p>
-            <p style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{best?.label} <span style={{ fontSize: "13px", color: "#7ee0bc", fontWeight: 400 }}>{max}/10</span></p>
-          </div>
-          <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.2)", borderRadius: "14px", padding: "18px" }}>
-            <p style={{ fontSize: "12px", color: "#f0b89a", margin: 0 }}>Toughest day</p>
-            <p style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{worst?.label} <span style={{ fontSize: "13px", color: "#f0a07a", fontWeight: 400 }}>{min}/10</span></p>
-          </div>
-          <div style={{ background: "rgba(127,119,221,0.12)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "14px", padding: "18px" }}>
-            <p style={{ fontSize: "12px", color: "#c4c1f0", margin: 0 }}>Entries logged</p>
-            <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{chartData.length}</p>
-          </div>
-        </div>
-
-        {/* Main chart */}
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "28px", marginBottom: "20px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "#f0eeff" }}>Mood over time</h2>
-
-          {loading ? (
-            <p style={{ color: "#7a7898", fontSize: "14px" }}>Loading chart...</p>
-          ) : (
-            <>
-              <svg viewBox="0 0 660 240" style={{ width: "100%", height: "240px" }}>
-                <defs>
-                  <linearGradient id="moodGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7F77DD" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#7F77DD" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                {[2, 4, 6, 8, 10].map(v => (
-                  <line key={v} x1="0" y1={220 - v * 20} x2="660" y2={220 - v * 20} stroke="rgba(127,119,221,0.08)" strokeWidth="1" />
-                ))}
-                <path d={areaPath} fill="url(#moodGradient)" />
-                <path d={linePath} fill="none" stroke="#7F77DD" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                {points.map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r="5" fill="#534AB7" stroke="#0d0d14" strokeWidth="2" />
-                ))}
-              </svg>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#7a7898", marginTop: "4px" }}>
-                {points.map((p, i) => <span key={i}>{p.label}</span>)}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-
-          {/* Emotion frequency */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "#f0eeff" }}>Most logged emotions</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {emotionFrequency.map(e => (
-                <div key={e.tag}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "13px", color: "#c4c1f0", textTransform: "capitalize" }}>{e.tag}</span>
-                    <span style={{ fontSize: "12px", color: "#7a7898" }}>{e.count}×</span>
-                  </div>
-                  <div style={{ height: "8px", background: "rgba(255,255,255,0.04)", borderRadius: "10px", overflow: "hidden" }}>
-                    <div style={{ width: `${(e.count / maxFreq) * 100}%`, height: "100%", background: e.color, borderRadius: "10px" }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Weekday pattern */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "#f0eeff" }}>Mood by day of week</h2>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", height: "160px", gap: "8px" }}>
-              {weekdayAverages.map(d => (
-                <div key={d.day} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", flex: 1 }}>
-                  <span style={{ fontSize: "11px", color: "#a89cf5", fontWeight: 600 }}>{d.avg}</span>
-                  <div style={{ width: "100%", height: `${d.avg * 15}px`, background: "linear-gradient(180deg, #7F77DD, #534AB7)", borderRadius: "8px 8px 0 0" }} />
-                  <span style={{ fontSize: "11px", color: "#7a7898" }}>{d.day}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* AI Pattern Insight */}
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px", marginTop: "20px" }}>
-          <span style={{ fontSize: "11px", fontWeight: 600, color: "#a89cf5", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", display: "inline-block", marginBottom: "14px" }}>✨ Powered by Gemini</span>
-          <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "10px", color: "#f0eeff" }}>Pattern insight</h2>
-          <p style={{ fontSize: "13px", color: "#9d9bc4", lineHeight: 1.7 }}>
-            Your mood consistently dips on Wednesdays — this may correlate with your mid-week workload. Weekends show your strongest scores, particularly Saturdays. Consider building small recovery rituals into your Wednesday routine, like a short walk or call with a friend, to soften the midweek dip.
-          </p>
-        </div>
-
+        )}
       </main>
     </div>
   );
+
 }

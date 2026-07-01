@@ -188,7 +188,9 @@ export default function LandingPage() {
             color: "#fff", fontSize: "15px", fontWeight: 500, cursor: "pointer",
           }}>Create free account</button>
           
-          <button style={{
+          <button 
+          onClick={() => navigate("/signin")}
+          style={{
             padding: "14px 36px", borderRadius: "10px",
             border: "1px solid rgba(127,119,221,0.3)",
             background: "transparent", color: "#c4c1f0",
@@ -206,7 +208,7 @@ export default function LandingPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#4a4870" }}>
           <span>🧠</span> MindSpace
         </div>
-        <div style={{ fontSize: "12px", color: "#4a4870" }}>@2023 MindSpace. All rights reserved.</div>
+        <div style={{ fontSize: "12px", color: "#4a4870" }}>@2026 MindSpace. All rights reserved.</div>
         <div style={{ display: "flex", gap: "20px", fontSize: "12px", color: "#4a4870" }}>
           {["Privacy", "Terms", "Contact"].map(l => <span key={l} style={{ cursor: "pointer" }}>{l}</span>)}
         </div>

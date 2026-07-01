@@ -29,10 +29,10 @@ export default function MoodJournal() {
 
   const sidebarItems = [
     { icon: "🏠", label: "Dashboard", path: "/dashboard" },
-    { icon: "📓", label: "Mood Journal", path: "/journal", active: true },
-    { icon: "📊", label: "Mood Trends", path: "/trends" },
-    { icon: "💬", label: "Community Forum", path: "/forum" },
-    { icon: "🩺", label: "Find a Therapist", path: "/therapists" },
+    { icon: "📓", label: "Mood Journal", path: "/mood-journal", active: true },
+    { icon: "📊", label: "Mood Trends", path: "/mood-trends" },
+    { icon: "💬", label: "Community Forum", path: "/community-forum" },
+    { icon: "🩺", label: "Find a Therapist", path: "/find-a-therapist" },
     { icon: "⚙️", label: "Settings", path: "/settings" },
   ];
 
@@ -127,7 +127,7 @@ export default function MoodJournal() {
     <div style={{ display: "flex", minHeight: "100vh", background: "#0d0d14", fontFamily: "system-ui, sans-serif", color: "#e8e6ff" }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column" }}>
+      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px" }}>
           <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>🧠</div>
           <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
@@ -302,3 +302,4 @@ export default function MoodJournal() {
     </div>
   );
 }
+

@@ -9,7 +9,17 @@ export default function Dashboard() {
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    // Pull user's first name from localStorage (set after login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleName = urlParams.get("name");
+    const googleEmail = urlParams.get("email");
+
+    if (googleName) {
+      localStorage.setItem("mindspace_user", JSON.stringify({ name: googleName, email: googleEmail }));
+      setUserName(googleName.split(" ")[0]);
+      window.history.replaceState({}, document.title, "/dashboard");
+      return;
+    }
+
     const storedUser = localStorage.getItem("mindspace_user");
     if (storedUser) {
       try {
@@ -30,31 +40,31 @@ export default function Dashboard() {
   };
 
   const moods = [
-    { emoji: "😢", label: "Rough", value: 2 },
-    { emoji: "😟", label: "Low", value: 4 },
-    { emoji: "😐", label: "Okay", value: 5 },
-    { emoji: "🙂", label: "Good", value: 7 },
-    { emoji: "😄", label: "Great", value: 9 },
+    { emoji: "\u{1F622}", label: "Rough", value: 2 },
+    { emoji: "\u{1F61F}", label: "Low", value: 4 },
+    { emoji: "\u{1F610}", label: "Okay", value: 5 },
+    { emoji: "\u{1F642}", label: "Good", value: 7 },
+    { emoji: "\u{1F604}", label: "Great", value: 9 },
   ];
 
   const sidebarItems = [
-    { icon: "🏠", label: "Dashboard", path: "/dashboard", active: true },
-    { icon: "📓", label: "Mood Journal", path: "/journal" },
-    { icon: "📊", label: "Mood Trends", path: "/trends" },
-    { icon: "💬", label: "Community Forum", path: "/forum" },
-    { icon: "🩺", label: "Find a Therapist", path: "/therapists" },
-    { icon: "⚙️", label: "Settings", path: "/settings" },
+    { icon: "\u{1F3E0}", label: "Dashboard", path: "/dashboard", active: true },
+    { icon: "\u{1F4D3}", label: "Mood Journal", path: "/mood-journal" },
+    { icon: "\u{1F4CA}", label: "Mood Trends", path: "/mood-trends" },
+    { icon: "\u{1F4AC}", label: "Community Forum", path: "/community-forum" },
+    { icon: "\u{1FA7A}", label: "Find a Therapist", path: "/find-a-therapist" },
+    { icon: "\u2699\uFE0F", label: "Settings", path: "/settings" },
   ];
 
   const recentEntries = [
-    { date: "Today, 8:14am", emoji: "😊", text: "Slept better than usual last night. Morning lecture felt manageable for once — maybe the routine is starting to stick.", tags: ["hopeful", "calm", "tired"] },
-    { date: "Yesterday, 10:45pm", emoji: "😟", text: "Deadline tomorrow is stressing me out. I know I can get it done but the pressure is heavy right now.", tags: ["anxious", "focused"] },
-    { date: "Mon, Jun 28", emoji: "😄", text: "Had coffee with friends on the quad. Hadn't laughed like that in weeks. Felt like myself again.", tags: ["happy", "social", "energised"] },
+    { date: "Today, 8:14am", emoji: "\u{1F60A}", text: "Slept better than usual last night. Morning lecture felt manageable for once - maybe the routine is starting to stick.", tags: ["hopeful", "calm", "tired"] },
+    { date: "Yesterday, 10:45pm", emoji: "\u{1F61F}", text: "Deadline tomorrow is stressing me out. I know I can get it done but the pressure is heavy right now.", tags: ["anxious", "focused"] },
+    { date: "Mon, Jun 28", emoji: "\u{1F604}", text: "Had coffee with friends on the quad. Hadn't laughed like that in weeks. Felt like myself again.", tags: ["happy", "social", "energised"] },
   ];
 
   const communityPosts = [
-    { icon: "🌿", text: "Does anyone else find that exercise actually helps during exam season? I started 20-min walks and it's been quietly huge.", replies: 14, time: "2 hours ago" },
-    { icon: "🌙", text: "Feeling isolated in a flat full of people. The paradox of uni loneliness is real. Anyone else?", replies: 27, time: "5 hours ago" },
+    { icon: "\u{1F33F}", text: "Does anyone else find that exercise actually helps during exam season? I started 20-min walks and it's been quietly huge.", replies: 14, time: "2 hours ago" },
+    { icon: "\u{1F319}", text: "Feeling isolated in a flat full of people. The paradox of uni loneliness is real. Anyone else?", replies: 27, time: "5 hours ago" },
   ];
 
   const chartData = [6, 6.5, 6, 6.8, 7.5, 7.8, 7.2];
@@ -63,10 +73,9 @@ export default function Dashboard() {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0d0d14", fontFamily: "system-ui, sans-serif", color: "#e8e6ff" }}>
 
-      {/* SIDEBAR */}
-      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column" }}>
+      <aside style={{ width: "260px", background: "#0a0a10", borderRight: "1px solid rgba(127,119,221,0.12)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px" }}>
-          <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>🧠</div>
+          <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>{"\u{1F9E0}"}</div>
           <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
         </div>
 
@@ -93,8 +102,6 @@ export default function Dashboard() {
                 color: item.active ? "#a89cf5" : "#9d9bc4",
                 fontWeight: item.active ? 600 : 400,
               }}
-              onMouseEnter={e => { if (!item.active) e.currentTarget.style.background = "rgba(255,255,255,0.03)" }}
-              onMouseLeave={e => { if (!item.active) e.currentTarget.style.background = "transparent" }}
             >
               <span>{item.icon}</span> {item.label}
             </div>
@@ -105,24 +112,22 @@ export default function Dashboard() {
           onClick={() => { localStorage.removeItem("mindspace_user"); navigate("/"); }}
           style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "#7a7898" }}
         >
-          <span>🚪</span> Logout
+          <span>{"\u{1F6AA}"}</span> Logout
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main style={{ flex: 1, padding: "28px 36px", overflowY: "auto" }}>
 
-        {/* TOP BAR */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
           <div>
             <h1 style={{ fontSize: "26px", fontWeight: 600, color: "#f0eeff", margin: 0 }}>
-              {getGreeting()}, {userName} 👋
+              {getGreeting()}, {userName} {"\u{1F44B}"}
             </h1>
             <p style={{ fontSize: "14px", color: "#8b89b8", marginTop: "4px" }}>How are you feeling today?</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{ position: "relative", width: "38px", height: "38px", borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(127,119,221,0.15)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-              🔔
+              {"\u{1F514}"}
               <div style={{ position: "absolute", top: "8px", right: "8px", width: "7px", height: "7px", borderRadius: "50%", background: "#534AB7" }} />
             </div>
             <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: 600, cursor: "pointer" }}>
@@ -131,10 +136,8 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* GRID ROW 1 */}
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "20px" }}>
 
-          {/* Mood Check-in Card */}
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "28px" }}>
             <h2 style={{ fontSize: "17px", fontWeight: 600, margin: 0, color: "#f0eeff" }}>How's your mood today?</h2>
             <p style={{ fontSize: "13px", color: "#7a7898", marginTop: "4px", marginBottom: "24px" }}>Tap an emoji, adjust the slider, and optionally add a note.</p>
@@ -183,24 +186,21 @@ export default function Dashboard() {
             }}>Log Mood</button>
           </div>
 
-          {/* AI Insight Card */}
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "#a89cf5", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", marginBottom: "16px" }}>✨ Powered by Gemini</span>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "#a89cf5", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", marginBottom: "16px" }}>{"\u2728"} Powered by Gemini</span>
             <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "12px", color: "#f0eeff" }}>Your weekly insight</h2>
             <p style={{ fontSize: "13px", color: "#9d9bc4", lineHeight: 1.6, fontStyle: "italic", marginBottom: "16px" }}>
-              "You've shown real resilience this week — dipping on Wednesday but bouncing back to your strongest score on Saturday. Your journaling consistency is up 40% and that's not small."
+              "You've shown real resilience this week - dipping on Wednesday but bouncing back to your strongest score on Saturday. Your journaling consistency is up 40% and that's not small."
             </p>
             <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.25)", borderRadius: "12px", padding: "14px", fontSize: "12px", color: "#7ee0bc", marginBottom: "14px" }}>
-              💡 Sleep before midnight correlates with higher next-day mood scores in your data.
+              {"\u{1F4A1}"} Sleep before midnight correlates with higher next-day mood scores in your data.
             </div>
-            <span style={{ fontSize: "12px", color: "#a89cf5", cursor: "pointer", marginTop: "auto" }}>Read full insight ›</span>
+            <span style={{ fontSize: "12px", color: "#a89cf5", cursor: "pointer", marginTop: "auto" }}>Read full insight {"\u203A"}</span>
           </div>
         </div>
 
-        {/* GRID ROW 2 */}
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "20px" }}>
 
-          {/* Chart Card */}
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
               <div>
@@ -231,14 +231,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "4px", color: "#f0eeff" }}>Quick stats</h2>
             {[
-              { icon: "🔥", label: "Day streak", value: "5", color: "rgba(216,90,48,0.15)" },
-              { icon: "📝", label: "Entries this month", value: "23", color: "rgba(83,74,183,0.15)" },
-              { icon: "💬", label: "Forum replies", value: "3", color: "rgba(29,158,117,0.15)" },
-              { icon: "📈", label: "Week-on-week mood", value: "+1.4", color: "rgba(29,158,117,0.15)" },
+              { icon: "\u{1F525}", label: "Day streak", value: "5", color: "rgba(216,90,48,0.15)" },
+              { icon: "\u{1F4DD}", label: "Entries this month", value: "23", color: "rgba(83,74,183,0.15)" },
+              { icon: "\u{1F4AC}", label: "Forum replies", value: "3", color: "rgba(29,158,117,0.15)" },
+              { icon: "\u{1F4C8}", label: "Week-on-week mood", value: "+1.4", color: "rgba(29,158,117,0.15)" },
             ].map(stat => (
               <div key={stat.label} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", borderRadius: "14px", background: stat.color }}>
                 <span style={{ fontSize: "22px" }}>{stat.icon}</span>
@@ -251,11 +250,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Entries */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, color: "#f0eeff" }}>Recent entries</h2>
-            <span style={{ fontSize: "13px", color: "#a89cf5", cursor: "pointer" }}>View all ›</span>
+            <span style={{ fontSize: "13px", color: "#a89cf5", cursor: "pointer" }}>View all {"\u203A"}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
             {recentEntries.map((entry, i) => (
@@ -275,11 +273,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Community Highlights */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, color: "#f0eeff" }}>From the community</h2>
-            <span style={{ fontSize: "13px", color: "#a89cf5", cursor: "pointer" }}>See forum ›</span>
+            <span style={{ fontSize: "13px", color: "#a89cf5", cursor: "pointer" }}>See forum {"\u203A"}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
             {communityPosts.map((post, i) => (
@@ -287,7 +284,7 @@ export default function Dashboard() {
                 <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "rgba(83,74,183,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>{post.icon}</div>
                 <div>
                   <p style={{ fontSize: "13px", color: "#c4c1f0", lineHeight: 1.5, marginBottom: "10px" }}>{post.text}</p>
-                  <span style={{ fontSize: "12px", color: "#7a7898" }}>💬 {post.replies} replies · {post.time}</span>
+                  <span style={{ fontSize: "12px", color: "#7a7898" }}>{"\u{1F4AC}"} {post.replies} replies {"\u00B7"} {post.time}</span>
                 </div>
               </div>
             ))}
