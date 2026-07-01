@@ -31,8 +31,10 @@ function Sidebar({ active }) {
 
   return (
     <aside className="w-64 bg-zinc-950 border-r border-zinc-800 flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
-      <div className="flex items-center gap-2 px-2 mb-6">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500" />
+      <div className="flex items-center gap-2.5 px-2 mb-6">
+        <div className="w-[34px] h-[34px] rounded-[10px] bg-[#534AB7] flex items-center justify-center text-base">
+          🧠
+        </div>
         <span className="font-semibold text-white">MindSpace</span>
       </div>
 

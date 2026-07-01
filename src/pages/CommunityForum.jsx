@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -15,32 +15,37 @@ import {
   Bookmark,
   Shield,
   Sparkles,
+  Send,
+  X,
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Dashboard', icon: Home, path: 'dashboard' },
+  { label: 'Dashboard', icon: Home, path: '/dashboard' },
   { label: 'Mood Journal', icon: BookOpen, path: '/mood-journal' },
   { label: 'Mood Trends', icon: BarChart3, path: '/mood-trends' },
   { label: 'Community Forum', icon: MessageCircle, path: '/community-forum' },
   { label: 'Find a Therapist', icon: Stethoscope, path: '/find-a-therapist' },
 ];
 
-function Sidebar({ active }) {
+function Sidebar({ active, userName }) {
   const navigate = useNavigate();
+  const initial = (userName || 'there').charAt(0).toUpperCase();
 
   return (
     <aside className="w-64 bg-zinc-950 border-r border-zinc-800 flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
-      <div className="flex items-center gap-2 px-2 mb-6">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-500" />
+      <div className="flex items-center gap-2.5 px-2 mb-6">
+        <div className="w-[34px] h-[34px] rounded-[10px] bg-[#534AB7] flex items-center justify-center text-base">
+          🧠
+        </div>
         <span className="font-semibold text-white">MindSpace</span>
       </div>
 
       <div className="flex items-center gap-3 bg-zinc-900 rounded-xl px-3 py-2.5 mb-6">
         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
-          T
+          {initial}
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-medium text-white">there</p>
+          <p className="text-sm font-medium text-white">{userName || 'there'}</p>
           <p className="text-xs text-zinc-500">Student</p>
         </div>
       </div>
@@ -79,7 +84,7 @@ function Sidebar({ active }) {
 
 const categories = ['All', 'Anxiety', 'Sleep', 'Relationships', 'Wins 🎉', 'General'];
 
-const posts = [
+const initialPosts = [
   {
     id: 1,
     author: 'Quietmind22',
@@ -91,7 +96,8 @@ const posts = [
     body: "Almost talked myself out of it, but I'm glad I picked up the phone. Felt lighter afterward than I have in days.",
     tags: ['hopeful', 'connection'],
     likes: 24,
-    replies: 6,
+    liked: false,
+    comments: [],
   },
   {
     id: 2,
@@ -104,7 +110,8 @@ const posts = [
     body: "Body's exhausted, brain won't stop replaying the day. What's actually worked for you, beyond 'just relax'?",
     tags: ['sleep', 'advice-wanted'],
     likes: 18,
-    replies: 14,
+    liked: false,
+    comments: [],
   },
   {
     id: 3,
@@ -117,7 +124,8 @@ const posts = [
     body: 'Three exams, one week, zero motivation. Anyone else in the same boat, or got a way to make it feel less impossible?',
     tags: ['anxious', 'school'],
     likes: 31,
-    replies: 22,
+    liked: false,
+    comments: [],
   },
   {
     id: 4,
@@ -130,7 +138,8 @@ const posts = [
     body: "Been lurking for months. First time posting just to say, reading everyone's entries has made me feel less alone.",
     tags: ['grateful'],
     likes: 47,
-    replies: 9,
+    liked: false,
+    comments: [],
   },
   {
     id: 5,
@@ -143,13 +152,99 @@ const posts = [
     body: 'I can say the words, but the guilt that follows is exhausting. Looking for what actually helped you sit with it.',
     tags: ['boundaries', 'advice-wanted'],
     likes: 29,
-    replies: 17,
+    liked: false,
+    comments: [],
   },
 ];
 
 export default function CommunityForum() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [query, setQuery] = useState('');
+  const [posts, setPosts] = useState(initialPosts);
+  const [userName, setUserName] = useState('there');
+
+  // Composer state
+  const [showComposer, setShowComposer] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newBody, setNewBody] = useState('');
+  const [newCategory, setNewCategory] = useState('General');
+  const [newTags, setNewTags] = useState('');
+
+  // Comment UI state
+  const [openComments, setOpenComments] = useState({});
+  const [commentDrafts, setCommentDrafts] = useState({});
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('mindspace_user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.name) setUserName(user.name.split(' ')[0]);
+      } catch (e) {}
+    }
+  }, []);
+
+  const initial = userName.charAt(0).toUpperCase();
+
+  const toggleLike = (id) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 }
+          : p
+      )
+    );
+  };
+
+  const toggleComments = (id) => {
+    setOpenComments((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const addComment = (id) => {
+    const text = (commentDrafts[id] || '').trim();
+    if (!text) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              comments: [
+                ...p.comments,
+                { id: Date.now(), author: userName, avatar: initial, text, time: 'Just now' },
+              ],
+            }
+          : p
+      )
+    );
+    setCommentDrafts((prev) => ({ ...prev, [id]: '' }));
+  };
+
+  const handleNewPost = () => {
+    if (!newTitle.trim() && !newBody.trim()) return;
+    const post = {
+      id: Date.now(),
+      author: userName,
+      avatar: initial,
+      color: 'bg-indigo-600',
+      time: 'Just now',
+      category: newCategory,
+      title: newTitle.trim() || 'Untitled',
+      body: newBody.trim(),
+      tags: newTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+      likes: 0,
+      liked: false,
+      comments: [],
+    };
+    setPosts((prev) => [post, ...prev]);
+    setShowComposer(false);
+    setNewTitle('');
+    setNewBody('');
+    setNewCategory('General');
+    setNewTags('');
+  };
 
   const filtered = posts.filter((p) => {
     const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
@@ -161,7 +256,7 @@ export default function CommunityForum() {
 
   return (
     <div className="flex bg-black min-h-screen text-white font-sans">
-      <Sidebar active="Community Forum" />
+      <Sidebar active="Community Forum" userName={userName} />
 
       <main className="flex-1 px-8 py-6 overflow-y-auto h-screen">
         <div className="flex items-start justify-between mb-6">
@@ -178,7 +273,7 @@ export default function CommunityForum() {
               <Bell size={18} />
             </button>
             <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold">
-              T
+              {initial}
             </div>
           </div>
         </div>
@@ -195,7 +290,10 @@ export default function CommunityForum() {
                   className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-white"
                 />
               </div>
-              <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap">
+              <button
+                onClick={() => setShowComposer(true)}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap"
+              >
                 <Plus size={16} /> New Post
               </button>
             </div>
@@ -236,28 +334,80 @@ export default function CommunityForum() {
                     </div>
                   </div>
                   <h3 className="font-semibold mb-1.5">{post.title}</h3>
-                  <p className="text-sm text-zinc-400 mb-3 leading-relaxed">{post.body}</p>
-                  <div className="flex gap-2 mb-3 flex-wrap">
-                    {post.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-xs px-2.5 py-1 rounded-full bg-indigo-950 text-indigo-300"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  {post.body && (
+                    <p className="text-sm text-zinc-400 mb-3 leading-relaxed">{post.body}</p>
+                  )}
+                  {post.tags.length > 0 && (
+                    <div className="flex gap-2 mb-3 flex-wrap">
+                      {post.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-xs px-2.5 py-1 rounded-full bg-indigo-950 text-indigo-300"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center gap-5 text-zinc-500 text-sm">
-                    <button className="flex items-center gap-1.5 hover:text-rose-400 transition-colors">
-                      <Heart size={15} /> {post.likes}
+                    <button
+                      onClick={() => toggleLike(post.id)}
+                      className={`flex items-center gap-1.5 transition-colors ${
+                        post.liked ? 'text-rose-400' : 'hover:text-rose-400'
+                      }`}
+                    >
+                      <Heart size={15} fill={post.liked ? 'currentColor' : 'none'} /> {post.likes}
                     </button>
-                    <button className="flex items-center gap-1.5 hover:text-indigo-400 transition-colors">
-                      <MessageSquare size={15} /> {post.replies}
+                    <button
+                      onClick={() => toggleComments(post.id)}
+                      className={`flex items-center gap-1.5 transition-colors ${
+                        openComments[post.id] ? 'text-indigo-400' : 'hover:text-indigo-400'
+                      }`}
+                    >
+                      <MessageSquare size={15} /> {post.comments.length}
                     </button>
                     <button className="flex items-center gap-1.5 hover:text-amber-400 transition-colors ml-auto">
                       <Bookmark size={15} />
                     </button>
                   </div>
+
+                  {/* Comments */}
+                  {openComments[post.id] && (
+                    <div className="mt-4 pt-4 border-t border-zinc-800 flex flex-col gap-3">
+                      {post.comments.map((c) => (
+                        <div key={c.id} className="flex items-start gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                            {c.avatar}
+                          </div>
+                          <div className="bg-zinc-800 rounded-xl px-3 py-2 flex-1">
+                            <p className="text-xs text-zinc-400 mb-0.5">
+                              <span className="font-medium text-zinc-200">{c.author}</span> · {c.time}
+                            </p>
+                            <p className="text-sm text-zinc-300">{c.text}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          value={commentDrafts[post.id] || ''}
+                          onChange={(e) =>
+                            setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') addComment(post.id);
+                          }}
+                          placeholder="Write a supportive reply..."
+                          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm outline-none placeholder-zinc-500 text-white"
+                        />
+                        <button
+                          onClick={() => addComment(post.id)}
+                          className="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition-colors flex items-center justify-center shrink-0"
+                        >
+                          <Send size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {filtered.length === 0 && (
@@ -310,6 +460,76 @@ export default function CommunityForum() {
           </div>
         </div>
       </main>
+
+      {/* New Post Modal */}
+      {showComposer && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-5">
+          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold">New Post</h2>
+              <button
+                onClick={() => setShowComposer(false)}
+                className="text-zinc-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <label className="text-xs text-zinc-400 mb-1.5 block">Title</label>
+            <input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="What's on your mind?"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-white mb-4"
+            />
+
+            <label className="text-xs text-zinc-400 mb-1.5 block">Share your thoughts</label>
+            <textarea
+              value={newBody}
+              onChange={(e) => setNewBody(e.target.value)}
+              rows={4}
+              placeholder="Write freely — this is a safe space..."
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-white resize-none mb-4"
+            />
+
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className="text-xs text-zinc-400 mb-1.5 block">Category</label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none text-white cursor-pointer"
+                >
+                  {categories
+                    .filter((c) => c !== 'All')
+                    .map((c) => (
+                      <option key={c} value={c} className="bg-zinc-900">
+                        {c}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-zinc-400 mb-1.5 block">Tags (comma separated)</label>
+                <input
+                  value={newTags}
+                  onChange={(e) => setNewTags(e.target.value)}
+                  placeholder="hopeful, advice-wanted"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-white"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleNewPost}
+              disabled={!newTitle.trim() && !newBody.trim()}
+              className="w-full py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed"
+            >
+              Post to Community
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
