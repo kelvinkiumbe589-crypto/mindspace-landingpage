@@ -97,6 +97,7 @@ const initialPosts = [
     tags: ['hopeful', 'connection'],
     likes: 24,
     liked: false,
+    bookmarked: false,
     comments: [],
   },
   {
@@ -111,6 +112,7 @@ const initialPosts = [
     tags: ['sleep', 'advice-wanted'],
     likes: 18,
     liked: false,
+    bookmarked: false,
     comments: [],
   },
   {
@@ -125,6 +127,7 @@ const initialPosts = [
     tags: ['anxious', 'school'],
     likes: 31,
     liked: false,
+    bookmarked: false,
     comments: [],
   },
   {
@@ -139,6 +142,7 @@ const initialPosts = [
     tags: ['grateful'],
     likes: 47,
     liked: false,
+    bookmarked: false,
     comments: [],
   },
   {
@@ -153,15 +157,19 @@ const initialPosts = [
     tags: ['boundaries', 'advice-wanted'],
     likes: 29,
     liked: false,
+    bookmarked: false,
     comments: [],
   },
 ];
+
+const BOOKMARKS_KEY = 'mindspace_bookmarks';
 
 export default function CommunityForum() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [posts, setPosts] = useState(initialPosts);
   const [userName, setUserName] = useState('there');
+  const [showSaved, setShowSaved] = useState(false);
 
   // Composer state
   const [showComposer, setShowComposer] = useState(false);
@@ -182,9 +190,31 @@ export default function CommunityForum() {
         if (user.name) setUserName(user.name.split(' ')[0]);
       } catch (e) {}
     }
+
+    // Restore saved bookmarks
+    try {
+      const storedBookmarks = localStorage.getItem(BOOKMARKS_KEY);
+      if (storedBookmarks) {
+        const ids = JSON.parse(storedBookmarks);
+        if (Array.isArray(ids) && ids.length) {
+          setPosts((prev) => prev.map((p) => (ids.includes(p.id) ? { ...p, bookmarked: true } : p)));
+        }
+      }
+    } catch (e) {}
   }, []);
 
   const initial = userName.charAt(0).toUpperCase();
+
+  const toggleBookmark = (id) => {
+    setPosts((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, bookmarked: !p.bookmarked } : p));
+      localStorage.setItem(
+        BOOKMARKS_KEY,
+        JSON.stringify(next.filter((p) => p.bookmarked).map((p) => p.id))
+      );
+      return next;
+    });
+  };
 
   const toggleLike = (id) => {
     setPosts((prev) =>
@@ -236,6 +266,7 @@ export default function CommunityForum() {
         .filter(Boolean),
       likes: 0,
       liked: false,
+      bookmarked: false,
       comments: [],
     };
     setPosts((prev) => [post, ...prev]);
@@ -246,7 +277,10 @@ export default function CommunityForum() {
     setNewTags('');
   };
 
+  const savedCount = posts.filter((p) => p.bookmarked).length;
+
   const filtered = posts.filter((p) => {
+    if (showSaved && !p.bookmarked) return false;
     const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
     const matchesQuery =
       p.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -290,6 +324,17 @@ export default function CommunityForum() {
                   className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-white"
                 />
               </div>
+              <button
+                onClick={() => setShowSaved((s) => !s)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border ${
+                  showSaved
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                }`}
+              >
+                <Bookmark size={16} fill={showSaved ? 'currentColor' : 'none'} /> Saved
+                {savedCount > 0 && ` (${savedCount})`}
+              </button>
               <button
                 onClick={() => setShowComposer(true)}
                 className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap"
@@ -366,8 +411,14 @@ export default function CommunityForum() {
                     >
                       <MessageSquare size={15} /> {post.comments.length}
                     </button>
-                    <button className="flex items-center gap-1.5 hover:text-amber-400 transition-colors ml-auto">
-                      <Bookmark size={15} />
+                    <button
+                      onClick={() => toggleBookmark(post.id)}
+                      title={post.bookmarked ? 'Remove bookmark' : 'Save post'}
+                      className={`flex items-center gap-1.5 transition-colors ml-auto ${
+                        post.bookmarked ? 'text-amber-400' : 'hover:text-amber-400'
+                      }`}
+                    >
+                      <Bookmark size={15} fill={post.bookmarked ? 'currentColor' : 'none'} />
                     </button>
                   </div>
 
@@ -410,9 +461,20 @@ export default function CommunityForum() {
                   )}
                 </div>
               ))}
-              {filtered.length === 0 && (
-                <p className="text-zinc-500 text-sm text-center py-10">No posts match your search.</p>
-              )}
+              {filtered.length === 0 &&
+                (showSaved ? (
+                  <div className="text-center py-12 text-zinc-500">
+                    <Bookmark size={28} className="mx-auto mb-3 text-zinc-600" />
+                    <p className="text-sm text-zinc-400 mb-1">No bookmarks yet</p>
+                    <p className="text-xs">
+                      Tap the bookmark icon on any post to save it here for later.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-zinc-500 text-sm text-center py-10">
+                    No posts match your search.
+                  </p>
+                ))}
             </div>
           </div>
 
