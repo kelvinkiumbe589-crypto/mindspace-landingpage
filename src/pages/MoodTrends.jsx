@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { DoorOpen } from "lucide-react";
 
 const STORAGE_KEY = "mindspace_entries";
 const DAY_MS = 86400000;
@@ -198,7 +199,7 @@ export default function MoodTrends() {
           onClick={() => { localStorage.removeItem("mindspace_user"); navigate("/"); }}
           style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "#7a7898" }}
         >
-          <span>{"\u{1F6AA}"}</span> Logout
+          <DoorOpen size={16} /> Logout
         </div>
       </aside>
 

@@ -169,10 +169,36 @@ export default function FindATherapist() {
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [query, setQuery] = useState('');
 
+  // Filter panel state
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterSessionTypes, setFilterSessionTypes] = useState([]);
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [minRating, setMinRating] = useState(0);
+
+  const toggleSessionType = (type) => {
+    setFilterSessionTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
+
+  const clearFilters = () => {
+    setFilterSessionTypes([]);
+    setAvailableOnly(false);
+    setMinRating(0);
+  };
+
+  const activeFilterCount =
+    filterSessionTypes.length + (availableOnly ? 1 : 0) + (minRating > 0 ? 1 : 0);
+
   const filtered = therapists.filter((t) => {
     const matchesSpecialty = activeSpecialty === 'All' || t.specialties.includes(activeSpecialty);
     const matchesQuery = t.name.toLowerCase().includes(query.toLowerCase());
-    return matchesSpecialty && matchesQuery;
+    const matchesSession =
+      filterSessionTypes.length === 0 ||
+      filterSessionTypes.some((s) => t.sessionTypes.includes(s));
+    const matchesAvailable = !availableOnly || t.available;
+    const matchesRating = t.rating >= minRating;
+    return matchesSpecialty && matchesQuery && matchesSession && matchesAvailable && matchesRating;
   });
 
   return (
@@ -211,10 +237,95 @@ export default function FindATherapist() {
                   className="bg-transparent outline-none text-sm placeholder-zinc-500 w-full text-white"
                 />
               </div>
-              <button className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-300 whitespace-nowrap">
+              <button
+                onClick={() => setShowFilters((s) => !s)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border ${
+                  showFilters || activeFilterCount > 0
+                    ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-300'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                }`}
+              >
                 <Filter size={16} /> Filters
+                {activeFilterCount > 0 && ` (${activeFilterCount})`}
               </button>
             </div>
+
+            {showFilters && (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Filters</h3>
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={clearFilters}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs text-zinc-400 mb-2">Session type</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { type: 'video', label: 'Video' },
+                      { type: 'in-person', label: 'In-person' },
+                      { type: 'phone', label: 'Phone' },
+                    ].map(({ type, label }) => {
+                      const Icon = sessionIcon[type];
+                      const on = filterSessionTypes.includes(type);
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => toggleSessionType(type)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                            on
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                          }`}
+                        >
+                          <Icon size={13} /> {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-zinc-400 mb-2">Minimum rating</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { value: 0, label: 'Any' },
+                      { value: 4.0, label: '4.0+' },
+                      { value: 4.5, label: '4.5+' },
+                      { value: 4.8, label: '4.8+' },
+                    ].map(({ value, label }) => (
+                      <button
+                        key={label}
+                        onClick={() => setMinRating(value)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                          minRating === value
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-zinc-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={availableOnly}
+                    onChange={(e) => setAvailableOnly(e.target.checked)}
+                    className="w-4 h-4 accent-indigo-600"
+                  />
+                  <span className="text-xs text-zinc-300">Available now only</span>
+                </label>
+              </div>
+            )}
 
             <div className="flex gap-2 flex-wrap">
               {specialties.map((s) => (
