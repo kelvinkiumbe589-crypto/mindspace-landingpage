@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DoorOpen, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
+import Sidebar from "../components/Sidebar";
 
 const STORAGE_KEY = "mindspace_entries";
 const DAY_MS = 86400000;
@@ -163,49 +164,7 @@ export default function MoodTrends() {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", fontFamily: "system-ui, sans-serif", color: "var(--text)" }}>
 
-      {/* SIDEBAR */}
-      <aside style={{ width: "260px", background: "var(--sidebar)", borderRight: "1px solid var(--border)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
-        <div onClick={() => navigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px", cursor: "pointer" }}>
-          <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>{"\u{1F9E0}"}</div>
-          <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px", borderRadius: "12px", background: "rgba(83,74,183,0.15)", marginBottom: "20px" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>
-            {userName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>{userName}</p>
-            <p style={{ fontSize: "11px", color: "var(--text-muted-2)", margin: 0 }}>Student</p>
-          </div>
-        </div>
-
-        <nav style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
-          {sidebarItems.map(item => (
-            <div
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: "flex", alignItems: "center", gap: "10px",
-                padding: "10px 12px", borderRadius: "10px",
-                cursor: "pointer", fontSize: "14px",
-                background: item.active ? "rgba(83,74,183,0.18)" : "transparent",
-                color: item.active ? "var(--accent-soft)" : "var(--text-muted)",
-                fontWeight: item.active ? 600 : 400,
-              }}
-            >
-              <span>{item.icon}</span> {item.label}
-            </div>
-          ))}
-        </nav>
-
-        <div
-          onClick={() => { localStorage.removeItem("mindspace_user"); localStorage.removeItem("mindspace_token"); navigate("/"); }}
-          style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "var(--text-dim)" }}
-        >
-          <DoorOpen size={16} /> Logout
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* MAIN */}
       <main style={{ flex: 1, padding: "28px 36px", overflowY: "auto", height: "100vh" }}>

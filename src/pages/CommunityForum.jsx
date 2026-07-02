@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Home,
-  BookOpen,
-  BarChart3,
-  MessageCircle,
-  Stethoscope,
-  Settings,
   Bell,
   Search,
   Plus,
@@ -17,79 +11,11 @@ import {
   Sparkles,
   Send,
   X,
-  DoorOpen,
   Sun,
   Moon,
 } from 'lucide-react';
 import { useTheme } from '../theme';
-
-const navItems = [
-  { label: 'Dashboard', icon: Home, path: '/dashboard' },
-  { label: 'Mood Journal', icon: BookOpen, path: '/mood-journal' },
-  { label: 'Mood Trends', icon: BarChart3, path: '/mood-trends' },
-  { label: 'Community Forum', icon: MessageCircle, path: '/community-forum' },
-  { label: 'Find a Therapist', icon: Stethoscope, path: '/find-a-therapist' },
-  { label: 'Settings', icon: Settings, path: '/settings' },
-];
-
-function Sidebar({ active, userName }) {
-  const navigate = useNavigate();
-  const initial = (userName || 'there').charAt(0).toUpperCase();
-
-  return (
-    <aside className="w-64 bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
-      <div onClick={() => navigate('/dashboard')} className="flex items-center gap-2.5 px-2 mb-6 cursor-pointer">
-        <div className="w-[34px] h-[34px] rounded-[10px] bg-[#534AB7] flex items-center justify-center text-base">
-          🧠
-        </div>
-        <span className="font-semibold text-[var(--text)]">MindSpace</span>
-      </div>
-
-      <div className="flex items-center gap-3 bg-[var(--card)] rounded-xl px-3 py-2.5 mb-6">
-        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
-          {initial}
-        </div>
-        <div className="leading-tight">
-          <p className="text-sm font-medium text-[var(--text)]">{userName || 'there'}</p>
-          <p className="text-xs text-[var(--text-dim)]">Student</p>
-        </div>
-      </div>
-
-      <nav className="flex flex-col gap-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = item.label === active;
-          return (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left ${
-                isActive
-                  ? 'bg-indigo-600 text-white font-medium'
-                  : 'text-[var(--text-muted)] hover:bg-[var(--card)] hover:text-[var(--text-soft)]'
-              }`}
-            >
-              <Icon size={18} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      <button
-        onClick={() => {
-          localStorage.removeItem('mindspace_user');
-          localStorage.removeItem('mindspace_token');
-          navigate('/');
-        }}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-dim)] hover:bg-[var(--card)] hover:text-[var(--text-soft)] mt-auto text-left"
-      >
-        <DoorOpen size={18} />
-        Logout
-      </button>
-    </aside>
-  );
-}
+import Sidebar from '../components/Sidebar';
 
 const categories = ['All', 'Anxiety', 'Sleep', 'Relationships', 'Wins 🎉', 'General'];
 
@@ -302,7 +228,7 @@ export default function CommunityForum() {
 
   return (
     <div className="flex bg-[var(--bg)] min-h-screen text-[var(--text)] font-sans">
-      <Sidebar active="Community Forum" userName={userName} />
+      <Sidebar />
 
       <main className="flex-1 px-8 py-6 h-screen flex flex-col overflow-hidden">
         <div className="flex items-start justify-between mb-6">
