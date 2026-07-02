@@ -10,6 +10,7 @@ import {
   Phone,
   Sparkles,
   BadgeCheck,
+  BarChart3,
   Sun,
   Moon,
 } from 'lucide-react';
