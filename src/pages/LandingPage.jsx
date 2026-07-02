@@ -18,6 +18,7 @@ export default function LandingPage() {
   const [sPhone, setSPhone] = useState("");
   const [sMsg, setSMsg] = useState("");
   const [sStatus, setSStatus] = useState(null); // null | "sending" | "sent" | "mailto"
+  const [openFaq, setOpenFaq] = useState(0);
 
   const handleSupportSubmit = async (e) => {
     e.preventDefault();
@@ -94,6 +95,7 @@ export default function LandingPage() {
           {[
             { label: "Features", action: () => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }) },
             { label: "How it works", action: () => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" }) },
+            { label: "FAQ", action: () => document.getElementById("faq")?.scrollIntoView({ behavior: "smooth" }) },
             { label: "Community", action: () => navigate("/community-forum") },
             { label: "Therapists", action: () => navigate("/find-a-therapist") },
           ].map(item => (
@@ -182,7 +184,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── STATS ── */}
-      <section id="how" style={{
+      <section style={{
         display: "flex", justifyContent: "center", gap: "60px",
         padding: "48px 40px",
         borderTop: "1px solid rgba(127,119,221,0.1)",
@@ -230,6 +232,66 @@ export default function LandingPage() {
               }}>{icon}</div>
               <h3 style={{ fontSize: "15px", fontWeight: 500, color: "#e0deff", marginBottom: "8px" }}>{title}</h3>
               <p style={{ fontSize: "13px", color: "#7a7898", lineHeight: 1.6 }}>{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="how" style={{ padding: "80px 40px", borderTop: "1px solid rgba(127,119,221,0.1)" }}>
+        <div style={{ textAlign: "center", marginBottom: "48px" }}>
+          <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>How it works</div>
+          <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>From feeling to understanding, in four steps</h2>
+          <p style={{ fontSize: "15px", color: "#9d9bc4", maxWidth: "560px", margin: "0 auto" }}>
+            MindSpace turns a few seconds of daily reflection into real insight about your mental wellbeing — and support whenever you need it.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", maxWidth: "1000px", margin: "0 auto" }}>
+          {[
+            { n: "1", icon: "📝", title: "Log how you feel", desc: "Take a few seconds each day to record your mood, tag the emotions behind it, and write what's on your mind — no pressure, just honesty." },
+            { n: "2", icon: "✨", title: "Get AI insights", desc: "Our Gemini-powered assistant reads your entries and reflects back gentle, personalised insights and practical tips — like a friend who remembers." },
+            { n: "3", icon: "📊", title: "See your patterns", desc: "Your entries become clear charts and trends, so you can spot what lifts you up, what wears you down, and how you're growing over time." },
+            { n: "4", icon: "🤝", title: "Reach out for support", desc: "Connect anonymously with a caring community, and when you need more, book a licensed therapist and pay securely — all in one place." },
+          ].map((s) => (
+            <div key={s.n} style={{ position: "relative", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(83,74,183,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>{s.icon}</div>
+                <span style={{ fontSize: "34px", fontWeight: 700, color: "rgba(127,119,221,0.25)", lineHeight: 1 }}>{s.n}</span>
+              </div>
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#e0deff", marginBottom: "8px" }}>{s.title}</h3>
+              <p style={{ fontSize: "13px", color: "#7a7898", lineHeight: 1.6 }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" style={{ padding: "80px 40px", borderTop: "1px solid rgba(127,119,221,0.1)" }}>
+        <div style={{ textAlign: "center", marginBottom: "40px" }}>
+          <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>FAQ</div>
+          <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>Frequently asked questions</h2>
+          <p style={{ fontSize: "15px", color: "#9d9bc4" }}>Everything you need to know before you start.</p>
+        </div>
+
+        <div style={{ maxWidth: "720px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "12px" }}>
+          {[
+            { q: "Is MindSpace free to use?", a: "Yes — creating an account, logging moods, viewing your trends, and joining the community are completely free. You only pay when you choose to book a session with a licensed therapist." },
+            { q: "Is my data private?", a: "Absolutely. Your journal entries are yours alone, passwords are securely hashed, and you can post in the community anonymously. We never sell your personal data." },
+            { q: "How does the AI insight work?", a: "When you ask for an insight, MindSpace sends a summary of your recent moods to our AI (Google Gemini), which reflects patterns back to you with gentle, practical suggestions. It's supportive guidance — not a diagnosis or a replacement for professional care." },
+            { q: "Are the therapists licensed?", a: "Every therapist on MindSpace is a licensed, verified professional. You can browse by specialty, see their rates and session types, and book directly." },
+            { q: "How do payments work?", a: "When you book a therapist you can pay securely via M-Pesa, card, or bank transfer. Right after paying you get a confirmation and the therapist's contact details." },
+            { q: "Do I have to be a student?", a: "Not at all. MindSpace is built for anyone navigating life — students, professionals, and everyone in between." },
+            { q: "Is MindSpace a replacement for therapy or emergency help?", a: "No. MindSpace supports your everyday wellbeing, but it isn't a crisis service. If you're in danger or need urgent help, please contact a local emergency line or a qualified professional." },
+          ].map((f, i) => (
+            <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "14px", padding: "18px 20px", cursor: "pointer" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+                <span style={{ fontSize: "15px", fontWeight: 500, color: "#e8e6ff" }}>{f.q}</span>
+                <span style={{ fontSize: "20px", color: "#7F77DD", lineHeight: 1, flexShrink: 0 }}>{openFaq === i ? "−" : "+"}</span>
+              </div>
+              {openFaq === i && (
+                <p style={{ fontSize: "14px", color: "#9d9bc4", lineHeight: 1.7, marginTop: "12px" }}>{f.a}</p>
+              )}
             </div>
           ))}
         </div>

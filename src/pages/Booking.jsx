@@ -69,6 +69,7 @@ export default function Booking() {
   const pollStatus = async (checkoutId) => {
     for (let i = 0; i < 8; i++) {
       await new Promise((r) => setTimeout(r, 4000));
+      setStatusMsg(`Verifying your payment with M-Pesa… (${i + 1})`);
       try {
         const res = await fetch(`${API_BASE}/api/payments/query`, {
           method: "POST",
@@ -152,6 +153,26 @@ export default function Booking() {
     { key: "card", label: "Card", Icon: CreditCard },
     { key: "bank", label: "Bank transfer", Icon: Building2 },
   ];
+
+  // ── Verifying / processing screen ──
+  if (status === "processing") {
+    return (
+      <div style={wrap}>
+        <div style={{ ...card, maxWidth: "440px", textAlign: "center" }}>
+          <div style={{ width: "52px", height: "52px", borderRadius: "50%", border: "4px solid var(--border)", borderTopColor: "#534AB7", margin: "0 auto 22px", animation: "spin 1s linear infinite" }} />
+          <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 8px" }}>
+            {method === "mpesa" ? "Confirming your payment…" : "Processing…"}
+          </h1>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6 }}>
+            {statusMsg || "Please wait a moment."}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--text-dim)", marginTop: "16px" }}>
+            Keep this page open — don't refresh or go back.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Confirmation screen ──
   if (status === "done") {
