@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu } from "lucide-react";
 import { logout } from "../auth";
 import AccountDrawer from "./AccountDrawer";
+import SupportChat from "./SupportChat";
 
 const NAV = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -115,6 +116,7 @@ export default function Sidebar() {
       </div>
     </aside>
     <AccountDrawer />
+    <SupportChat />
     </>
   );
 }
