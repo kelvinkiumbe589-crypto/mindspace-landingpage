@@ -1,6 +1,6 @@
 import MoodTicker from "../components/MoodTicker";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = "http://localhost:8080";
@@ -8,6 +8,36 @@ const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
 const SUPPORT_PHONE = "+254757306837";
 const SUPPORT_LOCATION = "Nairobi, Kenya";
 const SUPPORT_HOURS = "Mon–Fri, 8am–6pm EAT";
+
+// Count-up number that animates when scrolled into view
+function CountUp({ value, suffix = "", prefix = "" }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting && !started.current) {
+          started.current = true;
+          const duration = 1400;
+          const start = performance.now();
+          const tick = (now) => {
+            const p = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - p, 3);
+            setDisplay(Math.round(value * eased));
+            if (p < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+      });
+    }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [value]);
+  return <span ref={ref}>{prefix}{display.toLocaleString()}{suffix}</span>;
+}
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -19,6 +49,54 @@ export default function LandingPage() {
   const [sMsg, setSMsg] = useState("");
   const [sStatus, setSStatus] = useState(null); // null | "sending" | "sent" | "mailto"
   const [openFaq, setOpenFaq] = useState(0);
+
+  // Futuristic UI state
+  const [scrolled, setScrolled] = useState(false);
+  const [feeling, setFeeling] = useState("");
+  const [demoInsight, setDemoInsight] = useState("");
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  // Shrinking nav on scroll
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Scroll-reveal for elements with the "reveal" class
+  useEffect(() => {
+    const els = document.querySelectorAll(".reveal");
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) {
+          en.target.classList.add("reveal-visible");
+          obs.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
+
+  const handleDemo = async () => {
+    if (!feeling.trim() || demoLoading) return;
+    setDemoLoading(true);
+    setDemoInsight("");
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moodContext: `The user says they feel: ${feeling}`, question: "Give a short, warm one-paragraph reflection and one practical tip." }),
+      });
+      if (!res.ok) throw new Error("bad");
+      const data = await res.json();
+      setDemoInsight(data.reply);
+    } catch (e) {
+      setDemoInsight("Our AI is resting right now — sign up and try it live on your dashboard, where MindSpace turns your moods into personalised insights.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   const handleSupportSubmit = async (e) => {
     e.preventDefault();
@@ -46,41 +124,33 @@ export default function LandingPage() {
   };
 
   return (
-    <div style={{ background: "#0d0d14", minHeight: "100vh", color: "#e8e6ff", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ background: "#0d0d14", minHeight: "100vh", color: "#e8e6ff", fontFamily: "system-ui, sans-serif", position: "relative", overflowX: "hidden" }}>
 
-      {/* ── TOP CONTACT BAR ── */}
-      <div style={{
-        background: "#4b43a3", color: "#fff", fontSize: "13px",
-        padding: "9px 40px", display: "flex", justifyContent: "space-between",
-        alignItems: "center", flexWrap: "wrap", gap: "10px",
-      }}>
-        <div style={{ display: "flex", gap: "22px", flexWrap: "wrap", alignItems: "center" }}>
-          <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: "7px" }}>
-            <span>📞</span> {SUPPORT_PHONE}
-          </a>
-          <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: "7px" }}>
-            <span>✉️</span> {SUPPORT_EMAIL}
-          </a>
-          <span style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <span>📍</span> {SUPPORT_LOCATION}
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "7px", color: "rgba(255,255,255,0.85)" }}>
-          <span>🕒</span> {SUPPORT_HOURS}
-        </div>
+      {/* Aurora background */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "-120px", left: "-80px", width: "460px", height: "460px", borderRadius: "50%", background: "radial-gradient(circle, rgba(83,74,183,0.35), transparent 70%)", filter: "blur(60px)", animation: "auroraFloat 16s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", top: "8%", right: "-100px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(127,119,221,0.28), transparent 70%)", filter: "blur(60px)", animation: "auroraFloat 20s ease-in-out infinite reverse" }} />
+        <div style={{ position: "absolute", bottom: "-160px", left: "35%", width: "480px", height: "480px", borderRadius: "50%", background: "radial-gradient(circle, rgba(91,143,216,0.20), transparent 70%)", filter: "blur(70px)", animation: "auroraFloat 24s ease-in-out infinite" }} />
       </div>
+      {/* Grain overlay */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.04, backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
+
+      {/* Page content above the background */}
+      <div style={{ position: "relative", zIndex: 1 }}>
 
       {/* ── NAVBAR ── */}
       <nav style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "18px 40px",
+        padding: scrolled ? "10px 40px" : "18px 40px",
         borderBottom: "1px solid rgba(127,119,221,0.15)",
         position: "sticky",
         top: 0,
-        background: "rgba(13,13,20,0.9)",
-        backdropFilter: "blur(12px)",
+        background: scrolled ? "rgba(13,13,20,0.96)" : "rgba(13,13,20,0.6)",
+        backdropFilter: "blur(14px)",
+        boxShadow: scrolled ? "0 8px 30px rgba(0,0,0,0.35)" : "none",
+        transition: "padding 0.3s ease, background 0.3s ease, box-shadow 0.3s ease",
         zIndex: 100,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "18px", fontWeight: 500 }}>
@@ -140,6 +210,9 @@ export default function LandingPage() {
           AI-powered mental wellness for Africa
         </div>
 
+        {/* Mood orb */}
+        <div aria-hidden style={{ width: "96px", height: "96px", margin: "0 auto 28px", borderRadius: "50%", background: "radial-gradient(circle at 35% 30%, #b7aef8, #534AB7 55%, #2e2769)", boxShadow: "0 0 70px rgba(127,119,221,0.55)", animation: "breathe 4s ease-in-out infinite" }} />
+
         {/* Heading */}
         <h1 style={{
           fontSize: "clamp(36px, 6vw, 64px)",
@@ -148,7 +221,7 @@ export default function LandingPage() {
           margin: "0 auto 20px",
         }}>
           Your mental health,{" "}
-          <span style={{ color: "#7F77DD" }}>tracked and supported</span>
+          <span className="gradient-text">tracked and supported</span>
         </h1>
 
         {/* Subtext */}
@@ -162,8 +235,9 @@ export default function LandingPage() {
 
         {/* CTAs */}
         <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginBottom: "60px" }}>
-          <button 
+          <button
            onClick={() => navigate("/signup")}
+           className="shimmer"
            style={{
             padding: "13px 32px", borderRadius: "10px",
             border: "none", background: "#534AB7",
@@ -180,31 +254,52 @@ export default function LandingPage() {
           }}>See how it works ▶</button>
         </div>
 
-        {/* 3D Marquee */}
+        {/* Live AI demo */}
+        <div style={{ maxWidth: "560px", margin: "0 auto 64px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "18px", padding: "22px", backdropFilter: "blur(10px)", textAlign: "left", boxShadow: "0 20px 50px rgba(0,0,0,0.3)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#a89cf5", fontWeight: 600, marginBottom: "12px" }}>
+            <span>✨</span> Try the AI — how are you feeling right now?
+          </div>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <input
+              value={feeling}
+              onChange={(e) => setFeeling(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleDemo(); }}
+              placeholder="e.g. anxious about exams…"
+              style={{ flex: 1, padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(127,119,221,0.25)", background: "rgba(255,255,255,0.05)", color: "#e8e6ff", fontSize: "14px", outline: "none" }}
+            />
+            <button onClick={handleDemo} disabled={demoLoading || !feeling.trim()} className="shimmer" style={{ padding: "12px 20px", borderRadius: "10px", border: "none", background: "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: demoLoading || !feeling.trim() ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+              {demoLoading ? "Thinking…" : "Reflect"}
+            </button>
+          </div>
+          {demoInsight && (
+            <p style={{ fontSize: "14px", color: "#c4c1f0", lineHeight: 1.7, marginTop: "14px", paddingTop: "14px", borderTop: "1px solid rgba(127,119,221,0.15)" }}>{demoInsight}</p>
+          )}
+        </div>
+
       </section>
 
       {/* ── STATS ── */}
-      <section style={{
+      <section className="reveal" style={{
         display: "flex", justifyContent: "center", gap: "60px",
-        padding: "48px 40px",
+        padding: "48px 40px", flexWrap: "wrap",
         borderTop: "1px solid rgba(127,119,221,0.1)",
         borderBottom: "1px solid rgba(127,119,221,0.1)",
       }}>
         {[
-          { num: "2,400+", label: "Active users" },
-          { num: "18,000+", label: "Mood entries logged" },
-          { num: "94%", label: "Feel more self-aware" },
-          { num: "60+", label: "Licensed therapists" },
-        ].map(({ num, label }) => (
+          { value: 2400, suffix: "+", label: "Active users" },
+          { value: 18000, suffix: "+", label: "Mood entries logged" },
+          { value: 94, suffix: "%", label: "Feel more self-aware" },
+          { value: 60, suffix: "+", label: "Licensed therapists" },
+        ].map(({ value, suffix, label }) => (
           <div key={label} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "28px", fontWeight: 500, color: "#c4c1f0" }}>{num}</div>
+            <div style={{ fontSize: "30px", fontWeight: 600, color: "#c4c1f0" }}><CountUp value={value} suffix={suffix} /></div>
             <div style={{ fontSize: "13px", color: "#6b6990", marginTop: "4px" }}>{label}</div>
           </div>
         ))}
       </section>
 <MoodTicker />
       {/* ── FEATURES ── */}
-      <section id="features" style={{ padding: "80px 40px" }}>
+      <section id="features" className="reveal" style={{ padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
           <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>Features</div>
           <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>Everything you need to feel better</h2>
@@ -219,11 +314,12 @@ export default function LandingPage() {
             { icon: "📊", title: "Mood trend charts", desc: "Visual charts show your mood trends over days and weeks. Spot patterns and celebrate progress.", color: "rgba(83,74,183,0.2)" },
             { icon: "🩺", title: "Therapist directory", desc: "Browse licensed therapists by specialization and location. Book sessions directly.", color: "rgba(29,158,117,0.2)" },
             { icon: "🔒", title: "Private and secure", desc: "Your data is encrypted and private. Anonymous posting is built in.", color: "rgba(216,90,48,0.15)" },
-          ].map(({ icon, title, desc, color }) => (
-            <div key={title} style={{
+          ].map(({ icon, title, desc, color }, i) => (
+            <div key={title} className="hover-lift" style={{
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(127,119,221,0.15)",
               borderRadius: "14px", padding: "24px",
+              gridColumn: i === 0 ? "span 2" : "auto",
             }}>
               <div style={{
                 width: "44px", height: "44px", borderRadius: "10px",
@@ -238,7 +334,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how" style={{ padding: "80px 40px", borderTop: "1px solid rgba(127,119,221,0.1)" }}>
+      <section id="how" className="reveal" style={{ padding: "80px 40px", borderTop: "1px solid rgba(127,119,221,0.1)" }}>
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
           <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>How it works</div>
           <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>From feeling to understanding, in four steps</h2>
@@ -254,7 +350,7 @@ export default function LandingPage() {
             { n: "3", icon: "📊", title: "See your patterns", desc: "Your entries become clear charts and trends, so you can spot what lifts you up, what wears you down, and how you're growing over time." },
             { n: "4", icon: "🤝", title: "Reach out for support", desc: "Connect anonymously with a caring community, and when you need more, book a licensed therapist and pay securely — all in one place." },
           ].map((s) => (
-            <div key={s.n} style={{ position: "relative", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
+            <div key={s.n} className="hover-lift" style={{ position: "relative", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                 <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(83,74,183,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>{s.icon}</div>
                 <span style={{ fontSize: "34px", fontWeight: 700, color: "rgba(127,119,221,0.25)", lineHeight: 1 }}>{s.n}</span>
@@ -266,8 +362,39 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── TESTIMONIALS MARQUEE ── */}
+      <section className="reveal" style={{ padding: "70px 0", borderTop: "1px solid rgba(127,119,221,0.1)", overflow: "hidden" }}>
+        <div style={{ textAlign: "center", marginBottom: "36px", padding: "0 40px" }}>
+          <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>Loved by our community</div>
+          <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff" }}>People are feeling the difference</h2>
+        </div>
+        <div className="marquee-track">
+          {(() => {
+            const quotes = [
+              { quote: "MindSpace helped me notice my Sunday-night anxiety pattern I'd never seen before.", name: "Amara", role: "Student" },
+              { quote: "The AI insights feel weirdly personal — like journaling that actually talks back.", name: "Brian", role: "Developer" },
+              { quote: "Booking a therapist took two minutes. No awkward phone calls.", name: "Wanjiru", role: "Teacher" },
+              { quote: "The community made me feel less alone at 2am.", name: "NightOwl", role: "Member" },
+              { quote: "Logging my mood daily became a tiny ritual I look forward to.", name: "Joseph", role: "Nurse" },
+            ];
+            return [...quotes, ...quotes].map((t, i) => (
+              <div key={i} style={{ width: "320px", flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "16px", padding: "22px" }}>
+                <p style={{ fontSize: "14px", color: "#c4c1f0", lineHeight: 1.6, marginBottom: "16px" }}>“{t.quote}”</p>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, color: "#fff" }}>{t.name.charAt(0)}</div>
+                  <div>
+                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#e8e6ff", margin: 0 }}>{t.name}</p>
+                    <p style={{ fontSize: "11px", color: "#7a7898", margin: 0 }}>{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      </section>
+
       {/* ── FAQ ── */}
-      <section id="faq" style={{ padding: "80px 40px", borderTop: "1px solid rgba(127,119,221,0.1)" }}>
+      <section id="faq" className="reveal" style={{ padding: "80px 40px", borderTop: "1px solid rgba(127,119,221,0.1)" }}>
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>FAQ</div>
           <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>Frequently asked questions</h2>
@@ -298,7 +425,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section style={{
+      <section className="reveal" style={{
         textAlign: "center", padding: "80px 40px",
         borderTop: "1px solid rgba(127,119,221,0.1)",
       }}>
@@ -422,6 +549,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
+      </div>{/* end content wrapper */}
     </div>
   );
 }

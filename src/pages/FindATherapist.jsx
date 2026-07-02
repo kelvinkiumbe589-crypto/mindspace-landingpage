@@ -21,6 +21,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { useTheme } from '../theme';
+import { useReveal } from '../useReveal';
 
 const navItems = [
   { label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -177,6 +178,7 @@ const sessionIcon = { video: Video, 'in-person': MapPin, phone: Phone };
 export default function FindATherapist() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  useReveal([]);
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [query, setQuery] = useState('');
 
@@ -365,7 +367,7 @@ export default function FindATherapist() {
               {filtered.map((t) => (
                 <div
                   key={t.id}
-                  className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col hover:border-[var(--border)] transition-colors"
+                  className="hover-lift bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col hover:border-[var(--border)] transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div
@@ -374,7 +376,10 @@ export default function FindATherapist() {
                       {t.initials}
                     </div>
                     <div className="leading-tight min-w-0">
-                      <p className="text-sm font-semibold truncate">{t.name}</p>
+                      <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                        {t.available && <span className="pulse-dot" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#1D9E75", flexShrink: 0 }} />}
+                        {t.name}
+                      </p>
                       <p className="text-xs text-[var(--text-dim)] truncate">{t.title}</p>
                     </div>
                   </div>

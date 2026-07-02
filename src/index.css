@@ -54,3 +54,151 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Landing page: futuristic UI helpers ───────────────────────── */
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  will-change: opacity, transform;
+}
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Aurora background blobs */
+@keyframes auroraFloat {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(1.15); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Animated gradient text */
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gradient-text {
+  background: linear-gradient(90deg, #7f77dd, #a89cf5, #5b8fd8, #7f77dd);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradientShift 6s ease infinite;
+}
+
+/* Shimmer sweep on primary CTA */
+@keyframes shimmerSweep {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+.shimmer { position: relative; overflow: hidden; }
+.shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: translateX(-120%);
+  animation: shimmerSweep 3.2s ease-in-out infinite;
+}
+
+/* Breathing mood orb */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
+/* Testimonials marquee */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+.marquee-track:hover { animation-play-state: paused; }
+
+/* Card hover lift + glow */
+.hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-6px);
+  border-color: rgba(127, 119, 221, 0.45) !important;
+  box-shadow: 0 18px 40px rgba(83, 74, 183, 0.18);
+}
+
+/* Skeleton loading shimmer */
+@keyframes skeletonShine {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--card-2) 25%, rgba(127,119,221,0.12) 37%, var(--card-2) 63%);
+  background-size: 200% 100%;
+  animation: skeletonShine 1.4s ease infinite;
+  border-radius: 10px;
+}
+
+/* Pop-in for new items */
+@keyframes popIn {
+  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: none; }
+}
+.pop-in { animation: popIn 0.4s ease both; }
+
+/* Heart pop on like */
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.4); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.heart-pop { animation: heartPop 0.4s ease; }
+
+/* Availability pulse dot */
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(29,158,117,0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(29,158,117,0); }
+  100% { box-shadow: 0 0 0 0 rgba(29,158,117,0); }
+}
+.pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
+
+/* Chart line draw-in */
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
+}
+.draw-line {
+  stroke-dasharray: 1600;
+  stroke-dashoffset: 1600;
+  animation: drawLine 1.6s ease forwards;
+}
+
+/* Bars grow up */
+@keyframes growBar {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.grow-bar { transform-origin: bottom; animation: growBar 0.8s ease both; }
+
+/* Toast slide-in */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.toast-in { animation: toastIn 0.3s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .gradient-text, .shimmer::after, .marquee-track,
+  .skeleton, .pop-in, .heart-pop, .pulse-dot, .draw-line, .grow-bar, .toast-in { animation: none; }
+  .reveal.reveal-visible { opacity: 1; }
+}

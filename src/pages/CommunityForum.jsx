@@ -382,7 +382,7 @@ export default function CommunityForum() {
               {filtered.map((post) => (
                 <div
                   key={post.id}
-                  className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--border)] transition-colors"
+                  className="hover-lift bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--border)] transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div
@@ -420,7 +420,7 @@ export default function CommunityForum() {
                         post.liked ? 'text-rose-400' : 'hover:text-rose-400'
                       }`}
                     >
-                      <Heart size={15} fill={post.liked ? 'currentColor' : 'none'} /> {post.likes}
+                      <Heart className={post.liked ? 'heart-pop' : ''} size={15} fill={post.liked ? 'currentColor' : 'none'} /> {post.likes}
                     </button>
                     <button
                       onClick={() => toggleComments(post.id)}

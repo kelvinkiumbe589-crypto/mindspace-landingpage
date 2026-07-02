@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DoorOpen, Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
+import { useReveal } from "../useReveal";
 
 const STORAGE_KEY = "mindspace_entries";
 const DAY_MS = 86400000;
@@ -14,6 +15,7 @@ export default function MoodTrends() {
   const [range, setRange] = useState("Week");
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState([]);
+  useReveal([entries.length, range]);
 
   const sidebarItems = [
     { icon: "\u{1F3E0}", label: "Dashboard", path: "/dashboard" },
@@ -250,7 +252,7 @@ export default function MoodTrends() {
         ) : (
           <>
             {/* Summary stat cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
+            <div className="reveal" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
               <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
                 <p style={{ fontSize: "12px", color: "var(--text-soft)", margin: 0 }}>Average mood</p>
                 <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{avg}<span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 400 }}> / 10</span></p>
@@ -287,9 +289,11 @@ export default function MoodTrends() {
                       <line key={v} x1="0" y1={220 - v * 20} x2="660" y2={220 - v * 20} stroke="rgba(127,119,221,0.08)" strokeWidth="1" />
                     ))}
                     {points.length > 1 && <path d={areaPath} fill="url(#moodGradient)" />}
-                    {points.length > 1 && <path d={linePath} fill="none" stroke="#7F77DD" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+                    {points.length > 1 && <path key={range} className="draw-line" d={linePath} fill="none" stroke="#7F77DD" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
                     {points.map((p, i) => (
-                      <circle key={i} cx={p.x} cy={p.y} r="5" fill="#534AB7" stroke="#0d0d14" strokeWidth="2" />
+                      <circle key={i} cx={p.x} cy={p.y} r="5" fill="#534AB7" stroke="#0d0d14" strokeWidth="2" style={{ cursor: "pointer" }}>
+                        <title>{p.label}: {p.score}/10</title>
+                      </circle>
                     ))}
                   </svg>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
@@ -302,7 +306,7 @@ export default function MoodTrends() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
 
               {/* Emotion frequency */}
-              <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
+              <div className="hover-lift" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
                 <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "var(--text-strong)" }}>Most logged emotions</h2>
                 {emotionFrequency.length === 0 ? (
                   <p style={{ color: "var(--text-dim)", fontSize: "13px" }}>Tag your emotions when journaling to see them here.</p>
@@ -324,13 +328,13 @@ export default function MoodTrends() {
               </div>
 
               {/* Weekday pattern */}
-              <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
+              <div className="hover-lift" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
                 <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "20px", color: "var(--text-strong)" }}>Mood by day of week</h2>
                 <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", height: "160px", gap: "8px" }}>
                   {weekdayAverages.map(d => (
                     <div key={d.day} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", flex: 1, height: "100%", justifyContent: "flex-end" }}>
                       <span style={{ fontSize: "11px", color: "var(--accent-soft)", fontWeight: 600 }}>{d.avg || "—"}</span>
-                      <div style={{ width: "100%", height: `${(d.avg / maxWeekday) * 120}px`, minHeight: d.avg ? "4px" : "0", background: "linear-gradient(180deg, #7F77DD, #534AB7)", borderRadius: "8px 8px 0 0" }} />
+                      <div className="grow-bar" style={{ width: "100%", height: `${(d.avg / maxWeekday) * 120}px`, minHeight: d.avg ? "4px" : "0", background: "linear-gradient(180deg, #7F77DD, #534AB7)", borderRadius: "8px 8px 0 0" }} />
                       <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>{d.day}</span>
                     </div>
                   ))}

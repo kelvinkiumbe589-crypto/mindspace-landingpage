@@ -183,30 +183,39 @@ export default function Settings() {
         <div style={card}>
           <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "6px", color: "var(--text-strong)" }}>Appearance</h2>
           <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Choose how MindSpace looks to you.</p>
-          <div style={{ ...rowStyle, marginTop: "12px" }}>
-            <div>
-              <p style={{ fontSize: "14px", color: "var(--text-soft)", margin: 0 }}>Theme</p>
-              <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Currently {theme === "dark" ? "Dark" : "Light"} mode</p>
-            </div>
-            <div style={{ display: "flex", background: "var(--card-2)", borderRadius: "10px", padding: "3px" }}>
-              {[
-                { key: "light", label: "Light", Icon: Sun },
-                { key: "dark", label: "Dark", Icon: Moon },
-              ].map(({ key, label, Icon }) => (
-                <span
-                  key={key}
-                  onClick={() => setTheme(key)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "6px",
-                    padding: "7px 14px", borderRadius: "8px", fontSize: "13px", cursor: "pointer",
-                    background: theme === key ? "#534AB7" : "transparent",
-                    color: theme === key ? "#fff" : "var(--text-muted)", fontWeight: theme === key ? 600 : 400,
-                  }}
-                >
-                  <Icon size={14} /> {label}
-                </span>
-              ))}
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginTop: "16px" }}>
+            {[
+              { key: "light", label: "Light", bg: "#f3f2fb", sidebar: "#ffffff", bar: "rgba(83,74,183,0.28)" },
+              { key: "dark", label: "Dark", bg: "#0d0d14", sidebar: "#0a0a10", bar: "rgba(127,119,221,0.4)" },
+            ].map((t) => (
+              <div
+                key={t.key}
+                onClick={() => setTheme(t.key)}
+                className="hover-lift"
+                style={{
+                  cursor: "pointer", borderRadius: "14px", overflow: "hidden",
+                  border: theme === t.key ? "2px solid #534AB7" : "1px solid var(--border)",
+                  background: "var(--card-2)",
+                }}
+              >
+                <div style={{ display: "flex", height: "84px", background: t.bg }}>
+                  <div style={{ width: "26%", background: t.sidebar, borderRight: `1px solid ${t.bar}`, padding: "8px" }}>
+                    <div style={{ height: "6px", width: "70%", borderRadius: "3px", background: t.bar, marginBottom: "6px" }} />
+                    <div style={{ height: "6px", width: "50%", borderRadius: "3px", background: t.bar }} />
+                  </div>
+                  <div style={{ flex: 1, padding: "10px" }}>
+                    <div style={{ height: "7px", width: "60%", borderRadius: "3px", background: t.bar, marginBottom: "8px" }} />
+                    <div style={{ height: "26px", borderRadius: "6px", background: t.bar, opacity: 0.6 }} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--text-soft)", fontWeight: 600 }}>
+                    {t.key === "dark" ? <Moon size={14} /> : <Sun size={14} />} {t.label}
+                  </span>
+                  {theme === t.key && <span style={{ fontSize: "12px", color: "#a89cf5", fontWeight: 600 }}>✓ Active</span>}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

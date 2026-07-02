@@ -2,12 +2,18 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DoorOpen, Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
+import { useReveal } from "../useReveal";
 
 const STORAGE_KEY = "mindspace_entries";
+
+// Map a mood score to an accent colour for the entry's timeline border
+const moodColor = (s) =>
+  s >= 8 ? "#1D9E75" : s >= 6 ? "#7F77DD" : s >= 5 ? "#5B8FD8" : s >= 4 ? "#E0A458" : "#D85A30";
 
 export default function MoodJournal() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  useReveal([]);
   const [userName, setUserName] = useState("there");
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -305,9 +311,9 @@ export default function MoodJournal() {
             <p style={{ fontSize: "14px" }}>No entries match your search. Try a different filter or search term.</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div className="reveal" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {filteredEntries.map(entry => (
-              <div key={entry.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "22px" }}>
+              <div key={entry.id} className="hover-lift" style={{ background: "var(--card)", border: "1px solid var(--border)", borderLeft: `4px solid ${moodColor(entry.moodScore)}`, borderRadius: "16px", padding: "22px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "22px" }}>{entry.emoji}</span>

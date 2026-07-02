@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DoorOpen, Sun, Moon, Sparkles, Send } from "lucide-react";
 import { useTheme } from "../theme";
+import { useReveal } from "../useReveal";
+import CountUp from "../CountUp";
 
 const ENTRIES_KEY = "mindspace_entries";
 const POSTS_KEY = "mindspace_posts";
@@ -26,6 +28,7 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
+  useReveal([entries.length, posts.length]);
 
   const moods = [
     { emoji: "\u{1F622}", label: "Rough", value: 2 },
@@ -208,8 +211,8 @@ export default function Dashboard() {
       : "—";
 
   const quickStats = [
-    { icon: "\u{1F525}", label: "Day streak", value: String(dayStreak), color: "rgba(216,90,48,0.15)" },
-    { icon: "\u{1F4DD}", label: "Entries this month", value: String(entriesThisMonth), color: "rgba(83,74,183,0.15)" },
+    { icon: "\u{1F525}", label: "Day streak", num: dayStreak, color: "rgba(216,90,48,0.15)" },
+    { icon: "\u{1F4DD}", label: "Entries this month", num: entriesThisMonth, color: "rgba(83,74,183,0.15)" },
     { icon: "\u{1F4CA}", label: "Average mood", value: avgMood === "—" ? "—" : `${avgMood}`, color: "rgba(29,158,117,0.15)" },
     { icon: "\u{1F4C8}", label: "Week-on-week mood", value: weekOnWeek, color: "rgba(29,158,117,0.15)" },
   ];
@@ -569,11 +572,13 @@ export default function Dashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "4px", color: "var(--text-strong)" }}>Quick stats</h2>
             {quickStats.map(stat => (
-              <div key={stat.label} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", borderRadius: "14px", background: stat.color }}>
+              <div key={stat.label} className="hover-lift" style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", borderRadius: "14px", background: stat.color, border: "1px solid var(--border)" }}>
                 <span style={{ fontSize: "22px" }}>{stat.icon}</span>
                 <div>
                   <p style={{ fontSize: "12px", color: "var(--text-soft)", margin: 0 }}>{stat.label}</p>
-                  <p style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-strong)", margin: 0 }}>{stat.value}</p>
+                  <p style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-strong)", margin: 0 }}>
+                    {stat.num !== undefined ? <CountUp value={stat.num} /> : stat.value}
+                  </p>
                 </div>
               </div>
             ))}
@@ -590,7 +595,7 @@ export default function Dashboard() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
               {recentEntries.map((entry, i) => (
-                <div key={entry.id ?? i} style={{ background: "var(--card-3)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
+                <div key={entry.id ?? i} className="hover-lift" style={{ background: "var(--card-3)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
                     <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>{entry.date}</span>
                     <span style={{ fontSize: "18px" }}>{entry.emoji}</span>
@@ -619,7 +624,7 @@ export default function Dashboard() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
               {communityPreview.map((post, i) => (
-                <div key={i} style={{ display: "flex", gap: "12px", background: "var(--card-3)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
+                <div key={i} className="hover-lift" style={{ display: "flex", gap: "12px", background: "var(--card-3)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
                   <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "rgba(83,74,183,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, flexShrink: 0, color: "var(--accent-soft)" }}>{post.initial}</div>
                   <div>
                     <p style={{ fontSize: "13px", color: "var(--text-soft)", lineHeight: 1.5, marginBottom: "10px" }}>{post.text}</p>
