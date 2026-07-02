@@ -11,6 +11,9 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [step, setStep] = useState("credentials"); // "credentials" | "otp"
+  const [code, setCode] = useState("");
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -30,10 +33,9 @@ export default function SignIn() {
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        if (data.token) localStorage.setItem("mindspace_token", data.token);
-        localStorage.setItem("mindspace_user", JSON.stringify({ name: data.username, email: data.email }));
-        setSuccess(`Signed in successfully! Welcome back${data.username ? ", " + data.username.split(" ")[0] : ""}…`);
-        setTimeout(() => navigate("/dashboard"), 1000);
+        // Password OK — a verification code was emailed. Move to the OTP step.
+        setStep("otp");
+        setSuccess(data.message || `We sent a 6-digit code to ${email.trim()}.`);
       } else {
         const msg = data.error || (data && typeof data === "object" ? Object.values(data)[0] : null);
         setError(msg || "Sign in failed. Please check your credentials.");
@@ -42,6 +44,57 @@ export default function SignIn() {
       setError("Could not connect to the server. Make sure the backend is running on port 8080.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (loading) return;
+    if (code.trim().length !== 6) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), code: code.trim(), purpose: "LOGIN" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        if (data.token) localStorage.setItem("mindspace_token", data.token);
+        localStorage.setItem("mindspace_user", JSON.stringify({ name: data.username, email: data.email }));
+        setSuccess(`Verified! Welcome back${data.username ? ", " + data.username.split(" ")[0] : ""}…`);
+        setTimeout(() => navigate("/dashboard"), 900);
+      } else {
+        setError(data.error || "Verification failed. Please try again.");
+      }
+    } catch (err) {
+      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (resending) return;
+    setResending(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), purpose: "LOGIN" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) setSuccess(data.message || "A new code is on its way.");
+      else setError(data.error || "Couldn't resend the code.");
+    } catch (err) {
+      setError("Could not connect to the server.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -101,12 +154,50 @@ export default function SignIn() {
 
         {/* Heading */}
         <h1 style={{ fontSize: "26px", fontWeight: 600, color: "#f0eeff", marginBottom: "6px" }}>
-          Welcome back
+          {step === "otp" ? "Verify it's you" : "Welcome back"}
         </h1>
         <p style={{ fontSize: "14px", color: "#6b6990", marginBottom: "28px" }}>
-          Sign in to continue your wellness journey
+          {step === "otp" ? "Enter the 6-digit code we emailed you" : "Sign in to continue your wellness journey"}
         </p>
 
+        {/* ── OTP step ── */}
+        {step === "otp" && (
+          <>
+            {error && (
+              <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#f0a07a" }}>
+                ⚠️ {error}
+              </div>
+            )}
+            {success && (
+              <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#7ee0bc" }}>
+                ✓ {success}
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <input
+                inputMode="numeric"
+                autoFocus
+                maxLength={6}
+                value={code}
+                onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")); setError(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") verifyOtp(e); }}
+                placeholder="______"
+                style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid rgba(127,119,221,0.25)", background: "rgba(255,255,255,0.04)", color: "#f0eeff", fontSize: "26px", letterSpacing: "12px", textAlign: "center", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
+              />
+              <button onClick={verifyOtp} disabled={loading} type="button" style={{ width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: loading ? "#3d3690" : "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
+                {loading ? "Verifying…" : "Verify & sign in →"}
+              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                <span onClick={() => { setStep("credentials"); setCode(""); setError(""); setSuccess(""); }} style={{ color: "#9d9bc4", cursor: "pointer" }}>← Use a different account</span>
+                <span onClick={resendOtp} style={{ color: "#7F77DD", cursor: resending ? "default" : "pointer", fontWeight: 500 }}>{resending ? "Sending…" : "Resend code"}</span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Credentials step ── */}
+        {step === "credentials" && (
+        <>
         {/* Google Button */}
         <button
           onClick={handleGoogle}
@@ -234,6 +325,8 @@ export default function SignIn() {
             {loading ? "Signing in..." : "Sign in →"}
           </button>
         </div>
+        </>
+        )}
 
         {/* Sign up link */}
         <p style={{ textAlign: "center", fontSize: "13px", color: "#6b6990", marginTop: "24px" }}>
