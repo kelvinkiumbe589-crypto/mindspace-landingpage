@@ -64,6 +64,8 @@ export default function Dashboard() {
 
     if (googleName) {
       localStorage.setItem("mindspace_user", JSON.stringify({ name: googleName, email: googleEmail }));
+      const googleToken = urlParams.get("token");
+      if (googleToken) localStorage.setItem("mindspace_token", googleToken);
       setUserName(googleName.split(" ")[0]);
       window.history.replaceState({}, document.title, "/dashboard");
     } else {
