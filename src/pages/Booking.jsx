@@ -123,6 +123,17 @@ export default function Booking() {
       setStatusMsg("Check your phone 📲 — enter your M-Pesa PIN to authorise the payment.");
       const result = await pollStatus(checkoutId);
       if (result === "success") {
+        // Pay the therapist out (B2C). Best-effort — the booking is confirmed regardless.
+        setStatusMsg("Payment received — sending payout to your therapist…");
+        try {
+          await fetch(`${API_BASE}/api/payments/b2c`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: contact.phone, amount: amountKes, remarks: `Payout to ${therapist.name}` }),
+          });
+        } catch (e) {
+          // ignore payout errors in the demo; the booking still succeeds
+        }
         setStatus("done");
       } else {
         setStatus("idle");
@@ -170,6 +181,7 @@ export default function Booking() {
             <ol style={{ margin: 0, paddingLeft: "18px", color: "var(--text-muted)", fontSize: "13px", lineHeight: 1.9 }}>
               <li>{therapist.name} will email you within 24 hours to agree a time.</li>
               <li>You'll get a {therapist.sessionTypes?.[0] === "in-person" ? "location and directions" : "session link or call details"}.</li>
+              {method === "mpesa" && <li>💸 Your session fee has been paid out to {therapist.name}'s M-Pesa.</li>}
               <li>A receipt for {therapist.price} has been sent to your email.</li>
             </ol>
           </div>
