@@ -58,6 +58,15 @@ export default function MoodJournal() {
       } catch (e) {}
     }
     loadEntries();
+
+    // Keep the list fresh with moods logged elsewhere (e.g. the Dashboard)
+    const refresh = () => loadEntries();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
 
   const loadEntries = () => {
