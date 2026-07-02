@@ -6,6 +6,7 @@ import { useReveal } from "../useReveal";
 import CountUp from "../CountUp";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
+import { loadMoods, saveMood, emojiForScore as emojiFor } from "../moods";
 
 const ENTRIES_KEY = "mindspace_entries";
 const POSTS_KEY = "mindspace_posts";
@@ -81,14 +82,8 @@ export default function Dashboard() {
     loadPosts();
   }, []);
 
-  const loadEntries = () => {
-    try {
-      const stored = localStorage.getItem(ENTRIES_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setEntries(Array.isArray(parsed) ? parsed : []);
-    } catch (e) {
-      setEntries([]);
-    }
+  const loadEntries = async () => {
+    setEntries(await loadMoods());
   };
 
   const loadPosts = () => {
@@ -131,22 +126,16 @@ export default function Dashboard() {
 
   const canLog = mood && selectedTags.length > 0 && note.trim().length > 0;
 
-  const handleLogMood = () => {
+  const handleLogMood = async () => {
     if (!canLog) return;
-    const now = new Date();
     const chosen = mood ? moods.find((m) => m.label === mood) : null;
-    const entry = {
-      id: now.getTime(),
-      timestamp: now.getTime(),
-      date: formatDate(now),
+    const updated = await saveMood({
       moodScore,
-      emoji: chosen ? chosen.emoji : emojiForScore(moodScore),
-      text: note.trim(),
       tags: selectedTags,
-    };
-    const updated = [entry, ...entries];
+      text: note.trim(),
+      emoji: chosen ? chosen.emoji : emojiFor(moodScore),
+    });
     setEntries(updated);
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(updated));
     setMood(null);
     setMoodScore(7);
     setNote("");

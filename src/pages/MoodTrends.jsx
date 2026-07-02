@@ -5,6 +5,7 @@ import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
+import { loadMoods } from "../moods";
 
 const STORAGE_KEY = "mindspace_entries";
 const DAY_MS = 86400000;
@@ -48,13 +49,9 @@ export default function MoodTrends() {
     };
   }, []);
 
-  const loadEntries = () => {
+  const loadEntries = async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setEntries(Array.isArray(parsed) ? parsed : []);
-    } catch (err) {
-      setEntries([]);
+      setEntries(await loadMoods());
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
+import { loadMoods, saveMood, deleteMood } from "../moods";
 
 const STORAGE_KEY = "mindspace_entries";
 
@@ -69,35 +70,11 @@ export default function MoodJournal() {
     };
   }, []);
 
-  const loadEntries = () => {
+  const loadEntries = async () => {
     setLoading(true);
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setEntries(Array.isArray(parsed) ? parsed : []);
-    } catch (err) {
-      setEntries([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const persist = (list) => {
+    const list = await loadMoods();
     setEntries(list);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  };
-
-  const formatDate = (d) => {
-    const time = d
-      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-      .toLowerCase()
-      .replace(/\s/g, "");
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-    if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
-    if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
-    return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    setLoading(false);
   };
 
   const toggleTag = (tag) => {
@@ -114,26 +91,23 @@ export default function MoodJournal() {
 
   const canSave = mood && selectedTags.length > 0 && journalText.trim().length > 0;
 
-  const handleSaveEntry = () => {
+  const handleSaveEntry = async () => {
     if (!canSave) return;
     setSaving(true);
-    const now = new Date();
-    const newEntry = {
-      id: now.getTime(),
-      timestamp: now.getTime(),
-      date: formatDate(now),
+    const updated = await saveMood({
       moodScore,
-      emoji: moods.find(m => m.label === mood)?.emoji || "🙂",
-      text: journalText.trim(),
       tags: selectedTags,
-    };
-    persist([newEntry, ...entries]);
+      text: journalText.trim(),
+      emoji: moods.find(m => m.label === mood)?.emoji,
+    });
+    setEntries(updated);
     setSaving(false);
     resetComposer();
   };
 
-  const handleDelete = (id) => {
-    persist(entries.filter(e => e.id !== id));
+  const handleDelete = async (id) => {
+    const updated = await deleteMood(id);
+    setEntries(updated);
   };
 
   const filteredEntries = entries.filter(entry => {
@@ -281,7 +255,7 @@ export default function MoodJournal() {
             <p style={{ fontSize: "14px" }}>No entries match your search. Try a different filter or search term.</p>
           </div>
         ) : (
-          <div className="reveal" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {filteredEntries.map(entry => (
               <div key={entry.id} className="hover-lift" style={{ background: "var(--card)", border: "1px solid var(--border)", borderLeft: `4px solid ${moodColor(entry.moodScore)}`, borderRadius: "16px", padding: "22px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
