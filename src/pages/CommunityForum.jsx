@@ -13,6 +13,7 @@ import {
   X,
   Sun,
   Moon,
+  ChevronDown,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
@@ -112,8 +113,9 @@ export default function CommunityForum() {
   const [showComposer, setShowComposer] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
-  const [newCategory, setNewCategory] = useState('General');
+  const [newCategory, setNewCategory] = useState('');
   const [newTags, setNewTags] = useState('');
+  const [newAnonymous, setNewAnonymous] = useState(false);
 
   // Comment UI state
   const [openComments, setOpenComments] = useState({});
@@ -188,16 +190,18 @@ export default function CommunityForum() {
     setCommentDrafts((prev) => ({ ...prev, [id]: '' }));
   };
 
+  const canPost = newTitle.trim() && newBody.trim() && newCategory;
+
   const handleNewPost = () => {
-    if (!newTitle.trim() && !newBody.trim()) return;
+    if (!canPost) return;
     const post = {
       id: Date.now(),
-      author: userName,
-      avatar: initial,
-      color: 'bg-indigo-600',
+      author: newAnonymous ? 'Anonymous' : userName,
+      avatar: newAnonymous ? '?' : initial,
+      color: newAnonymous ? 'bg-zinc-600' : 'bg-indigo-600',
       time: 'Just now',
       category: newCategory,
-      title: newTitle.trim() || 'Untitled',
+      title: newTitle.trim(),
       body: newBody.trim(),
       tags: newTags
         .split(',')
@@ -212,8 +216,9 @@ export default function CommunityForum() {
     setShowComposer(false);
     setNewTitle('');
     setNewBody('');
-    setNewCategory('General');
+    setNewCategory('');
     setNewTags('');
+    setNewAnonymous(false);
   };
 
   const savedCount = posts.filter((p) => p.bookmarked).length;
@@ -481,7 +486,7 @@ export default function CommunityForum() {
               </button>
             </div>
 
-            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Title</label>
+            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Title <span className="text-orange-400">*</span></label>
             <input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -489,7 +494,7 @@ export default function CommunityForum() {
               className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)] mb-4"
             />
 
-            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Share your thoughts</label>
+            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Your thoughts <span className="text-orange-400">*</span></label>
             <textarea
               value={newBody}
               onChange={(e) => setNewBody(e.target.value)}
@@ -500,23 +505,27 @@ export default function CommunityForum() {
 
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
-                <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Category</label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none text-[var(--text)] cursor-pointer"
-                >
-                  {categories
-                    .filter((c) => c !== 'All')
-                    .map((c) => (
-                      <option key={c} value={c} className="bg-[var(--card)]">
-                        {c}
-                      </option>
-                    ))}
-                </select>
+                <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Category <span className="text-orange-400">*</span></label>
+                <div className="relative">
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="w-full appearance-none bg-[var(--card-2)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 pr-9 text-sm outline-none text-[var(--text)] cursor-pointer transition-colors focus:border-indigo-500"
+                  >
+                    <option value="" disabled style={{ background: "var(--elevated)", color: "var(--text-dim)" }}>Choose a category</option>
+                    {categories
+                      .filter((c) => c !== 'All')
+                      .map((c) => (
+                        <option key={c} value={c} style={{ background: "var(--elevated)", color: "var(--text)" }}>
+                          {c}
+                        </option>
+                      ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none" />
+                </div>
               </div>
               <div className="flex-1">
-                <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Tags (comma separated)</label>
+                <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Tags (optional)</label>
                 <input
                   value={newTags}
                   onChange={(e) => setNewTags(e.target.value)}
@@ -526,12 +535,40 @@ export default function CommunityForum() {
               </div>
             </div>
 
+            {/* Post identity */}
+            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Post as</label>
+            <div className="flex gap-2 mb-5">
+              <button
+                type="button"
+                onClick={() => setNewAnonymous(false)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                  !newAnonymous
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-[var(--card-2)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-soft)]'
+                }`}
+              >
+                <span className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[11px] font-semibold text-white">{initial}</span>
+                {userName}
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewAnonymous(true)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                  newAnonymous
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-[var(--card-2)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-soft)]'
+                }`}
+              >
+                🕶️ Anonymous
+              </button>
+            </div>
+
             <button
               onClick={handleNewPost}
-              disabled={!newTitle.trim() && !newBody.trim()}
+              disabled={!canPost}
               className="w-full py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:bg-[var(--card-2)] disabled:text-[var(--text-dim)] disabled:cursor-not-allowed"
             >
-              Post to Community
+              {canPost ? "Post to Community" : "Add a title, your thoughts & a category"}
             </button>
           </div>
         </div>
