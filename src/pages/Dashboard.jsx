@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
+  const chatBoxRef = useRef(null);
   useReveal([entries.length, posts.length]);
 
   const moods = [
@@ -290,10 +291,10 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Only auto-scroll to the chat once a conversation has started —
-    // otherwise this fires on page load and jumps the dashboard to the bottom.
+    // Scroll only inside the chat box (not the window) so the page doesn't jump.
     if (chatMessages.length === 0) return;
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const box = chatBoxRef.current;
+    if (box) box.scrollTop = box.scrollHeight;
   }, [chatMessages, chatLoading]);
 
   return (
@@ -440,7 +441,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", marginBottom: "16px", paddingRight: "4px" }}>
+          <div ref={chatBoxRef} style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", marginBottom: "16px", paddingRight: "4px" }}>
             {chatMessages.length === 0 && (
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {["How has my mood been lately?", "Give me a tip to sleep better", "I'm feeling anxious — what can I do?"].map((s) => (
