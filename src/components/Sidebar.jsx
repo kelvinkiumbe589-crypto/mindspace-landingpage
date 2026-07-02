@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, Settings as SettingsIcon, DoorOpen, Menu } from "lucide-react";
+import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu } from "lucide-react";
 import { logout } from "../auth";
+import AccountDrawer from "./AccountDrawer";
 
 const NAV = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -9,7 +10,6 @@ const NAV = [
   { label: "Mood Trends", icon: BarChart3, path: "/mood-trends" },
   { label: "Community Forum", icon: MessageCircle, path: "/community-forum" },
   { label: "Find a Therapist", icon: Stethoscope, path: "/find-a-therapist" },
-  { label: "Settings", icon: SettingsIcon, path: "/settings" },
 ];
 
 export default function Sidebar() {
@@ -42,6 +42,7 @@ export default function Sidebar() {
   };
 
   return (
+    <>
     <aside
       style={{
         width, background: "var(--sidebar)", borderRight: "1px solid var(--border)",
@@ -113,5 +114,7 @@ export default function Sidebar() {
         {!collapsed && "Logout"}
       </div>
     </aside>
+    <AccountDrawer />
+    </>
   );
 }
