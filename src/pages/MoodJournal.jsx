@@ -4,6 +4,7 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
 import Sidebar from "../components/Sidebar";
+import { AccountGear } from "../components/AccountDrawer";
 
 const STORAGE_KEY = "mindspace_entries";
 
@@ -154,6 +155,7 @@ export default function MoodJournal() {
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </div>
+            <AccountGear size={40} />
             <button
               onClick={() => setShowComposer(true)}
               style={{ display: "flex", alignItems: "center", gap: "8px", padding: "11px 20px", borderRadius: "12px", border: "none", background: "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}

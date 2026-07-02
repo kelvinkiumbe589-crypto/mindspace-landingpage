@@ -5,6 +5,7 @@ import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
 import CountUp from "../CountUp";
 import Sidebar from "../components/Sidebar";
+import { AccountGear } from "../components/AccountDrawer";
 
 const ENTRIES_KEY = "mindspace_entries";
 const POSTS_KEY = "mindspace_posts";
@@ -328,9 +329,7 @@ export default function Dashboard() {
               {"\u{1F514}"}
               <div style={{ position: "absolute", top: "8px", right: "8px", width: "7px", height: "7px", borderRadius: "50%", background: "#534AB7" }} />
             </div>
-            <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: 600, cursor: "pointer", color: "#fff" }}>
-              {userName.charAt(0).toUpperCase()}
-            </div>
+            <AccountGear />
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
 import Sidebar from "../components/Sidebar";
+import { AccountGear } from "../components/AccountDrawer";
 
 const STORAGE_KEY = "mindspace_entries";
 const DAY_MS = 86400000;
@@ -182,6 +183,7 @@ export default function MoodTrends() {
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </div>
+            <AccountGear size={40} />
             <div style={{ display: "flex", background: "var(--card-2)", borderRadius: "10px", padding: "3px" }}>
               {["Week", "Month", "Year"].map(t => (
                 <span

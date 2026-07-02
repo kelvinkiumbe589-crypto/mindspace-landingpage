@@ -16,6 +16,7 @@ import {
 import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
 import Sidebar from '../components/Sidebar';
+import { AccountGear } from '../components/AccountDrawer';
 
 const specialties = ['All', 'Anxiety', 'Depression', 'Relationships', 'Trauma', 'Sleep', 'Stress'];
 
@@ -166,9 +167,7 @@ export default function FindATherapist() {
             <button className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
               <Bell size={18} />
             </button>
-            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
-              T
-            </div>
+            <AccountGear size={36} />
           </div>
         </div>
 

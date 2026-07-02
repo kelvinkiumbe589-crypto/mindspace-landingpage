@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Settings as Gear, X, Sun, Moon, LogOut, ChevronRight,
@@ -13,6 +13,13 @@ export default function AccountDrawer() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
+
+  // Opened by the gear buttons in each page header (see AccountGear)
+  useEffect(() => {
+    const h = () => setOpen(true);
+    window.addEventListener("mindspace:open-account", h);
+    return () => window.removeEventListener("mindspace:open-account", h);
+  }, []);
 
   let name = "there";
   let email = "";
@@ -62,22 +69,6 @@ export default function AccountDrawer() {
 
   return (
     <>
-      {/* Floating gear button (top-right) */}
-      <button
-        onClick={() => setOpen(true)}
-        title="Account & settings"
-        style={{
-          position: "fixed", top: "14px", right: "18px", zIndex: 200,
-          width: "42px", height: "42px", borderRadius: "50%",
-          background: "var(--card-2)", border: "1px solid var(--border)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", color: "var(--text-muted)", backdropFilter: "blur(8px)",
-          boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-        }}
-      >
-        <Gear size={19} />
-      </button>
-
       {/* Blurred backdrop */}
       {open && (
         <div
@@ -177,5 +168,23 @@ export default function AccountDrawer() {
         </button>
       </div>
     </>
+  );
+}
+
+// Gear button for page headers — opens the account drawer.
+export function AccountGear({ size = 38 }) {
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new Event("mindspace:open-account"))}
+      title="Account & settings"
+      style={{
+        width: `${size}px`, height: `${size}px`, borderRadius: "50%",
+        background: "var(--card-2)", border: "1px solid var(--border)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "pointer", color: "var(--text-muted)", flexShrink: 0,
+      }}
+    >
+      <Gear size={18} />
+    </button>
   );
 }

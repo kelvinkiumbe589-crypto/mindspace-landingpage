@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
+import { AccountGear } from '../components/AccountDrawer';
 
 const categories = ['All', 'Anxiety', 'Sleep', 'Relationships', 'Wins 🎉', 'General'];
 
@@ -251,9 +252,7 @@ export default function CommunityForum() {
             <button className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
               <Bell size={18} />
             </button>
-            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white">
-              {initial}
-            </div>
+            <AccountGear size={36} />
           </div>
         </div>
 

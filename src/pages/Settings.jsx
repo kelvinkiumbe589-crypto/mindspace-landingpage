@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import Sidebar from "../components/Sidebar";
+import { AccountGear } from "../components/AccountDrawer";
 
 const PREFS_KEY = "mindspace_prefs";
 
@@ -113,8 +114,11 @@ export default function Settings() {
             <h1 style={{ fontSize: "24px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>Settings</h1>
             <p style={{ fontSize: "13px", color: "var(--text-muted-2)", marginTop: "4px" }}>Manage your profile, preferences, and data</p>
           </div>
-          <div onClick={toggleTheme} title="Toggle light / dark mode" style={iconBtn}>
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div onClick={toggleTheme} title="Toggle light / dark mode" style={iconBtn}>
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </div>
+            <AccountGear />
           </div>
         </div>
 
