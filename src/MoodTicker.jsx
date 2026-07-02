@@ -17,7 +17,7 @@ export default function MoodTicker() {
   return (
     <section className="py-12 overflow-hidden" style={{ background: "#E8F4F2" }}>
       <p className="text-center text-xs font-semibold tracking-widest uppercase mb-6" style={{ color: "#2D7A6E" }}>
-        What students are saying
+        What people are saying
       </p>
 
       {/* Ticker wrapper */}

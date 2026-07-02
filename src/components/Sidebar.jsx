@@ -72,7 +72,7 @@ export default function Sidebar() {
         {!collapsed && (
           <div style={{ overflow: "hidden" }}>
             <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-strong)", margin: 0, whiteSpace: "nowrap" }}>{userName}</p>
-            <p style={{ fontSize: "11px", color: "var(--text-muted-2)", margin: 0 }}>Student</p>
+            <p style={{ fontSize: "11px", color: "var(--text-muted-2)", margin: 0 }}>Member</p>
           </div>
         )}
       </div>

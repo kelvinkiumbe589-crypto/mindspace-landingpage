@@ -116,7 +116,7 @@ export default function SignUp() {
           {step === 1 ? "Create your account" : "Secure your account"}
         </h1>
         <p style={{ fontSize: "14px", color: "#6b6990", marginBottom: "24px" }}>
-          {step === 1 ? "Free forever for university students" : "Choose a strong password"}
+          {step === 1 ? "Free forever, for everyone" : "Choose a strong password"}
         </p>
 
         {serverError && (

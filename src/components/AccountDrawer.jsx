@@ -107,7 +107,7 @@ export default function AccountDrawer() {
           <div style={{ overflow: "hidden" }}>
             <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</p>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{email || "No email on file"}</p>
-            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--accent-soft)", background: "rgba(83,74,183,0.2)", padding: "2px 8px", borderRadius: "10px", display: "inline-block", marginTop: "6px" }}>Student</span>
+            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--accent-soft)", background: "rgba(83,74,183,0.2)", padding: "2px 8px", borderRadius: "10px", display: "inline-block", marginTop: "6px" }}>Member</span>
           </div>
         </div>
 

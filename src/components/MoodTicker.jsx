@@ -15,7 +15,7 @@ export default function MoodTicker() {
   return (
     <section style={{ padding: "32px 0", overflow: "hidden", background: "rgba(83,74,183,0.08)", borderTop: "1px solid rgba(127,119,221,0.1)", borderBottom: "1px solid rgba(127,119,221,0.1)" }}>
       <p style={{ textAlign: "center", fontSize: "11px", fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "#7F77DD", marginBottom: "20px" }}>
-        What students are saying
+        What people are saying
       </p>
 
       <div style={{ position: "relative" }}>

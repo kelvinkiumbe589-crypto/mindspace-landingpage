@@ -208,10 +208,10 @@ export default function LandingPage() {
           fontSize: "13px", color: "#AFA9EC", marginBottom: "24px",
         }}>
           <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7F77DD", display: "inline-block" }} />
-          AI-powered mental wellness for Africa
+          AI-powered mental wellness for everyone
         </div>
 
-        {/* 3D globe — wellness for Africa */}
+        {/* 3D globe — wellness for people everywhere */}
         <div style={{ margin: "8px auto 24px", maxWidth: "420px" }}>
           <Globe size={420} />
         </div>
@@ -306,7 +306,7 @@ export default function LandingPage() {
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
           <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>Features</div>
           <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>Everything you need to feel better</h2>
-          <p style={{ fontSize: "15px", color: "#9d9bc4" }}>Built for students, professionals, and anyone navigating life in Africa</p>
+          <p style={{ fontSize: "15px", color: "#9d9bc4" }}>Built for everyone navigating life — wherever you are in the world</p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: "900px", margin: "0 auto" }}>
@@ -374,7 +374,7 @@ export default function LandingPage() {
         <div className="marquee-track">
           {(() => {
             const quotes = [
-              { quote: "MindSpace helped me notice my Sunday-night anxiety pattern I'd never seen before.", name: "Amara", role: "Student" },
+              { quote: "MindSpace helped me notice my Sunday-night anxiety pattern I'd never seen before.", name: "Amara", role: "Designer" },
               { quote: "The AI insights feel weirdly personal — like journaling that actually talks back.", name: "Brian", role: "Developer" },
               { quote: "Booking a therapist took two minutes. No awkward phone calls.", name: "Wanjiru", role: "Teacher" },
               { quote: "The community made me feel less alone at 2am.", name: "NightOwl", role: "Member" },
@@ -411,7 +411,7 @@ export default function LandingPage() {
             { q: "How does the AI insight work?", a: "When you ask for an insight, MindSpace sends a summary of your recent moods to our AI (Google Gemini), which reflects patterns back to you with gentle, practical suggestions. It's supportive guidance — not a diagnosis or a replacement for professional care." },
             { q: "Are the therapists licensed?", a: "Every therapist on MindSpace is a licensed, verified professional. You can browse by specialty, see their rates and session types, and book directly." },
             { q: "How do payments work?", a: "When you book a therapist you can pay securely via M-Pesa, card, or bank transfer. Right after paying you get a confirmation and the therapist's contact details." },
-            { q: "Do I have to be a student?", a: "Not at all. MindSpace is built for anyone navigating life — students, professionals, and everyone in between." },
+            { q: "Who is MindSpace for?", a: "Everyone. Wherever you are in the world and whatever you do, MindSpace is built for anyone who wants to understand and care for their mental wellbeing." },
             { q: "Is MindSpace a replacement for therapy or emergency help?", a: "No. MindSpace supports your everyday wellbeing, but it isn't a crisis service. If you're in danger or need urgent help, please contact a local emergency line or a qualified professional." },
           ].map((f, i) => (
             <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.15)", borderRadius: "14px", padding: "18px 20px", cursor: "pointer" }}>
