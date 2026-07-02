@@ -18,6 +18,7 @@ import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
 import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
+import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
 const specialties = ['All', 'Anxiety', 'Depression', 'Relationships', 'Trauma', 'Sleep', 'Stress'];
 
@@ -107,6 +108,7 @@ const sessionIcon = { video: Video, 'in-person': MapPin, phone: Phone };
 export default function FindATherapist() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const unread = useSupportUnread();
   useReveal([]);
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [query, setQuery] = useState('');
@@ -165,8 +167,17 @@ export default function FindATherapist() {
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className="w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+            <button
+              onClick={openSupportChat}
+              title={unread > 0 ? `${unread} new repl${unread === 1 ? 'y' : 'ies'} from support` : 'Notifications'}
+              className={`relative w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors ${unread > 0 ? 'support-glow' : ''}`}
+            >
               <Bell size={18} />
+              {unread > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#e5484d] text-white text-[10px] font-bold flex items-center justify-center border-2 border-[var(--bg)] leading-none">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
             </button>
             <AccountGear size={36} />
           </div>

@@ -189,6 +189,13 @@ body {
 }
 .grow-bar { transform-origin: bottom; animation: growBar 0.8s ease both; }
 
+/* Support button glow (unread admin reply) */
+@keyframes supportGlow {
+  0%, 100% { box-shadow: 0 10px 30px rgba(83,74,183,0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(83,74,183,0.22), 0 12px 36px rgba(83,74,183,0.85); }
+}
+.support-glow { animation: supportGlow 1.5s ease-in-out infinite; }
+
 /* Toast slide-in */
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(12px); }
