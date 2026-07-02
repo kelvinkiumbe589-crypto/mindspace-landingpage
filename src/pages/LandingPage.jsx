@@ -2,6 +2,7 @@ import MoodTicker from "../components/MoodTicker";
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import Globe from "../components/Globe";
 
 const API_BASE = "http://localhost:8080";
 const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
@@ -210,8 +211,10 @@ export default function LandingPage() {
           AI-powered mental wellness for Africa
         </div>
 
-        {/* Mood orb */}
-        <div aria-hidden style={{ width: "96px", height: "96px", margin: "0 auto 28px", borderRadius: "50%", background: "radial-gradient(circle at 35% 30%, #b7aef8, #534AB7 55%, #2e2769)", boxShadow: "0 0 70px rgba(127,119,221,0.55)", animation: "breathe 4s ease-in-out infinite" }} />
+        {/* 3D globe — wellness for Africa */}
+        <div style={{ margin: "8px auto 24px", maxWidth: "420px" }}>
+          <Globe size={420} />
+        </div>
 
         {/* Heading */}
         <h1 style={{
