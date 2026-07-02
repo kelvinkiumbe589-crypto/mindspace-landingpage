@@ -13,6 +13,7 @@ import {
   Star,
 } from "lucide-react";
 
+const API_BASE = "http://localhost:8080";
 const sessionIcon = { video: Video, "in-person": MapPin, phone: Phone };
 
 // Deterministic demo contact details derived from the therapist
@@ -39,6 +40,8 @@ export default function Booking() {
   const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvc: "", name: "" });
   const [bankConfirmed, setBankConfirmed] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | processing | done
+  const [statusMsg, setStatusMsg] = useState("");
+  const [error, setError] = useState("");
 
   // Direct navigation without a selected therapist
   if (!therapist) {
@@ -60,11 +63,77 @@ export default function Booking() {
     (method === "card" && cardForm.number.replace(/\s/g, "").length >= 12 && cardForm.expiry && cardForm.cvc) ||
     (method === "bank" && bankConfirmed);
 
-  const handlePay = () => {
+  const amountKes = parseInt(String(therapist.price).replace(/[^0-9]/g, ""), 10) || 1;
+
+  // Poll STK status until Safaricom returns a final ResultCode
+  const pollStatus = async (checkoutId) => {
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkoutRequestId: checkoutId }),
+        });
+        const d = await res.json();
+        if (d.ResultCode !== undefined && d.ResultCode !== null) {
+          return String(d.ResultCode) === "0" ? "success" : (d.ResultDesc || "Payment was not completed.");
+        }
+        // errorCode 500.001.1001 = "request being processed" -> keep polling
+      } catch (e) {
+        // network hiccup -> keep polling
+      }
+    }
+    return "Timed out waiting for confirmation. If you entered your PIN, the payment may still complete.";
+  };
+
+  const handlePay = async () => {
     if (!canPay || status === "processing") return;
+    setError("");
+
+    // Card / bank remain a demo flow (no real gateway wired)
+    if (method !== "mpesa") {
+      setStatus("processing");
+      setTimeout(() => setStatus("done"), 1600);
+      return;
+    }
+
+    // Real M-Pesa STK push
     setStatus("processing");
-    // Demo flow — no real charge. Simulate gateway/STK processing.
-    setTimeout(() => setStatus("done"), 1600);
+    setStatusMsg("Sending payment request to M-Pesa…");
+    try {
+      const res = await fetch(`${API_BASE}/api/payments/stk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: mpesaPhone,
+          amount: amountKes,
+          accountReference: `MS-${therapist.id}`,
+          description: `MindSpace session with ${therapist.name}`,
+        }),
+      });
+      const data = await res.json();
+      const checkoutId = data.CheckoutRequestID;
+      if (!checkoutId) {
+        setStatus("idle");
+        setStatusMsg("");
+        setError(data.errorMessage || data.ResponseDescription || data.CustomerMessage || "Could not start the payment. Check the phone number and try again.");
+        return;
+      }
+      setStatusMsg("Check your phone 📲 — enter your M-Pesa PIN to authorise the payment.");
+      const result = await pollStatus(checkoutId);
+      if (result === "success") {
+        setStatus("done");
+      } else {
+        setStatus("idle");
+        setStatusMsg("");
+        setError(result);
+      }
+    } catch (e) {
+      setStatus("idle");
+      setStatusMsg("");
+      setError("Could not reach the server. Make sure the backend is running on port 8080.");
+    }
   };
 
   const methods = [
@@ -212,15 +281,28 @@ export default function Booking() {
             </div>
           )}
 
+          {error && (
+            <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "#f0a07a" }}>
+              ⚠️ {error}
+            </div>
+          )}
+          {status === "processing" && statusMsg && (
+            <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "var(--text-soft)" }}>
+              {statusMsg}
+            </div>
+          )}
+
           <button onClick={handlePay} disabled={!canPay || status === "processing"} style={{ ...primaryBtn, width: "100%", opacity: canPay ? 1 : 0.5, cursor: canPay ? "pointer" : "not-allowed" }}>
             {status === "processing"
-              ? "Processing…"
+              ? (method === "mpesa" ? "Waiting for M-Pesa…" : "Processing…")
               : method === "bank"
               ? "Confirm booking"
               : `Pay ${therapist.price} & confirm`}
           </button>
           <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>
-            🔒 This is a demo checkout — no real payment is charged.
+            {method === "mpesa"
+              ? "🔒 Live M-Pesa sandbox — you'll get a real STK prompt; no real money moves."
+              : "🔒 Card & bank are demo only — no real payment is charged."}
           </p>
         </div>
       </div>
