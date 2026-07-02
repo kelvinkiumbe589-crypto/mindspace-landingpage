@@ -95,12 +95,13 @@ export default function SignUp() {
       const response = await fetch("http://localhost:8080/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email, code: code.trim(), purpose: "REGISTER" }),
+        body: JSON.stringify({ email: form.email, code: code.trim(), purpose: "REGISTER", trustDevice: true }),
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok) {
         localStorage.setItem("mindspace_user", JSON.stringify({ name: form.name, email: form.email }));
         if (data.token) localStorage.setItem("mindspace_token", data.token);
+        if (data.deviceToken) localStorage.setItem("mindspace_device_token", data.deviceToken);
         setSuccess("Account verified! Taking you to your dashboard…");
         setTimeout(() => navigate("/dashboard"), 1100);
       } else {

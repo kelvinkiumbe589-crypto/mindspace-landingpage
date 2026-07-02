@@ -14,6 +14,13 @@ export default function SignIn() {
   const [step, setStep] = useState("credentials"); // "credentials" | "otp"
   const [code, setCode] = useState("");
   const [resending, setResending] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
+
+  const finishLogin = (data) => {
+    if (data.token) localStorage.setItem("mindspace_token", data.token);
+    if (data.deviceToken) localStorage.setItem("mindspace_device_token", data.deviceToken);
+    localStorage.setItem("mindspace_user", JSON.stringify({ name: data.username, email: data.email }));
+  };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -26,16 +33,24 @@ export default function SignIn() {
     setError("");
     setSuccess("");
     try {
+      const deviceToken = localStorage.getItem("mindspace_device_token") || "";
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password, deviceToken }),
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        // Password OK — a verification code was emailed. Move to the OTP step.
-        setStep("otp");
-        setSuccess(data.message || `We sent a 6-digit code to ${email.trim()}.`);
+        if (data.token) {
+          // Recognised device — skipped the OTP.
+          finishLogin(data);
+          setSuccess(`Signed in successfully! Welcome back${data.username ? ", " + data.username.split(" ")[0] : ""}…`);
+          setTimeout(() => navigate("/dashboard"), 900);
+        } else {
+          // A verification code was emailed. Move to the OTP step.
+          setStep("otp");
+          setSuccess(data.message || `We sent a 6-digit code to ${email.trim()}.`);
+        }
       } else {
         const msg = data.error || (data && typeof data === "object" ? Object.values(data)[0] : null);
         setError(msg || "Sign in failed. Please check your credentials.");
@@ -60,12 +75,11 @@ export default function SignIn() {
       const response = await fetch(`${API_BASE}/api/auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), code: code.trim(), purpose: "LOGIN" }),
+        body: JSON.stringify({ email: email.trim(), code: code.trim(), purpose: "LOGIN", trustDevice }),
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        if (data.token) localStorage.setItem("mindspace_token", data.token);
-        localStorage.setItem("mindspace_user", JSON.stringify({ name: data.username, email: data.email }));
+        finishLogin(data);
         setSuccess(`Verified! Welcome back${data.username ? ", " + data.username.split(" ")[0] : ""}…`);
         setTimeout(() => navigate("/dashboard"), 900);
       } else {
@@ -184,6 +198,10 @@ export default function SignIn() {
                 placeholder="______"
                 style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid rgba(127,119,221,0.25)", background: "rgba(255,255,255,0.04)", color: "#f0eeff", fontSize: "26px", letterSpacing: "12px", textAlign: "center", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }}
               />
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#9d9bc4", cursor: "pointer" }}>
+                <input type="checkbox" checked={trustDevice} onChange={(e) => setTrustDevice(e.target.checked)} style={{ accentColor: "#534AB7", width: "15px", height: "15px" }} />
+                Trust this device for 30 days (skip codes here)
+              </label>
               <button onClick={verifyOtp} disabled={loading} type="button" style={{ width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: loading ? "#3d3690" : "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
                 {loading ? "Verifying…" : "Verify & sign in →"}
               </button>
