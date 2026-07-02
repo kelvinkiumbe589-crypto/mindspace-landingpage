@@ -1,10 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
-  Smartphone,
-  CreditCard,
-  Building2,
+  ShieldCheck,
   CheckCircle2,
   Mail,
   Phone,
@@ -30,18 +28,25 @@ function contactFor(t) {
   };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export default function Booking() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const therapist = state?.therapist;
 
-  const [method, setMethod] = useState("mpesa");
-  const [mpesaPhone, setMpesaPhone] = useState("+254 ");
-  const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvc: "", name: "" });
-  const [bankConfirmed, setBankConfirmed] = useState(false);
-  const [status, setStatus] = useState("idle"); // idle | processing | done
+  const storedUser = (() => {
+    try { return JSON.parse(localStorage.getItem("mindspace_user") || "{}"); } catch (e) { return {}; }
+  })();
+
+  const [email, setEmail] = useState(storedUser.email || "");
+  const [phone, setPhone] = useState("+254 ");
+  const [fullName, setFullName] = useState(storedUser.name || "");
+  const [status, setStatus] = useState("idle"); // idle | creating | checkout | done
   const [statusMsg, setStatusMsg] = useState("");
   const [error, setError] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState("");
+  const trackingRef = useRef(null);
 
   // Direct navigation without a selected therapist
   if (!therapist) {
@@ -58,87 +63,67 @@ export default function Booking() {
   }
 
   const contact = contactFor(therapist);
-  const canPay =
-    (method === "mpesa" && mpesaPhone.replace(/\D/g, "").length >= 12) ||
-    (method === "card" && cardForm.number.replace(/\s/g, "").length >= 12 && cardForm.expiry && cardForm.cvc) ||
-    (method === "bank" && bankConfirmed);
-
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const canPay = isValidEmail && phone.replace(/\D/g, "").length >= 12;
   const amountKes = parseInt(String(therapist.price).replace(/[^0-9]/g, ""), 10) || 1;
 
-  // Poll STK status until Safaricom returns a final ResultCode
-  const pollStatus = async (checkoutId) => {
-    for (let i = 0; i < 8; i++) {
-      await new Promise((r) => setTimeout(r, 4000));
-      setStatusMsg(`Verifying your payment with M-Pesa… (${i + 1})`);
+  // Poll Pesapal for the final status. Only COMPLETED is success; FAILED/REVERSED
+  // are terminal failures; anything else (pending/invalid-yet-unpaid) keeps polling.
+  const pollStatus = async (trackingId) => {
+    for (let i = 0; i < 60; i++) {
+      await sleep(5000);
       try {
-        const res = await fetch(`${API_BASE}/api/payments/query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkoutRequestId: checkoutId }),
-        });
+        const res = await fetch(`${API_BASE}/api/payments/pesapal/status?orderTrackingId=${encodeURIComponent(trackingId)}`);
         const d = await res.json();
-        if (d.ResultCode !== undefined && d.ResultCode !== null) {
-          return String(d.ResultCode) === "0" ? "success" : (d.ResultDesc || "Payment was not completed.");
-        }
-        // errorCode 500.001.1001 = "request being processed" -> keep polling
+        const s = String(d.paymentStatus || "").toUpperCase();
+        if (s === "COMPLETED") return "success";
+        if (s === "FAILED" || s === "REVERSED") return d.paymentStatus || "Payment was not completed.";
       } catch (e) {
-        // network hiccup -> keep polling
+        // network hiccup — keep polling
       }
     }
-    return "Timed out waiting for confirmation. If you entered your PIN, the payment may still complete.";
+    return "timeout";
   };
 
   const handlePay = async () => {
-    if (!canPay || status === "processing") return;
+    if (!canPay || status === "creating") return;
     setError("");
-
-    // Card / bank remain a demo flow (no real gateway wired)
-    if (method !== "mpesa") {
-      setStatus("processing");
-      setTimeout(() => setStatus("done"), 1600);
-      return;
-    }
-
-    // Real M-Pesa STK push
-    setStatus("processing");
-    setStatusMsg("Sending payment request to M-Pesa…");
+    setStatus("creating");
+    setStatusMsg("Starting secure Pesapal checkout…");
+    const parts = fullName.trim().split(/\s+/);
     try {
-      const res = await fetch(`${API_BASE}/api/payments/stk`, {
+      const res = await fetch(`${API_BASE}/api/payments/pesapal/order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: mpesaPhone,
           amount: amountKes,
-          accountReference: `MS-${therapist.id}`,
           description: `MindSpace session with ${therapist.name}`,
+          email,
+          phone,
+          firstName: parts[0] || "",
+          lastName: parts.slice(1).join(" ") || "",
         }),
       });
       const data = await res.json();
-      const checkoutId = data.CheckoutRequestID;
-      if (!checkoutId) {
+      if (!res.ok || !data.redirectUrl) {
         setStatus("idle");
         setStatusMsg("");
-        setError(data.errorMessage || data.ResponseDescription || data.CustomerMessage || "Could not start the payment. Check the phone number and try again.");
+        setError(data.error || "Could not start the checkout. Please try again.");
         return;
       }
-      setStatusMsg("Check your phone 📲 — enter your M-Pesa PIN to authorise the payment.");
-      const result = await pollStatus(checkoutId);
+      trackingRef.current = data.orderTrackingId;
+      setCheckoutUrl(data.redirectUrl);
+      setStatus("checkout");
+      const result = await pollStatus(data.orderTrackingId);
       if (result === "success") {
-        // Pay the therapist out (B2C). Best-effort — the booking is confirmed regardless.
-        setStatusMsg("Payment received — sending payout to your therapist…");
-        try {
-          await fetch(`${API_BASE}/api/payments/b2c`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone: contact.phone, amount: amountKes, remarks: `Payout to ${therapist.name}` }),
-          });
-        } catch (e) {
-          // ignore payout errors in the demo; the booking still succeeds
-        }
         setStatus("done");
+      } else if (result === "timeout") {
+        setStatus("idle");
+        setCheckoutUrl("");
+        setError("We couldn't confirm the payment yet. If you completed it, it may take a moment — check your email for a receipt.");
       } else {
         setStatus("idle");
-        setStatusMsg("");
+        setCheckoutUrl("");
         setError(result);
       }
     } catch (e) {
@@ -148,27 +133,44 @@ export default function Booking() {
     }
   };
 
-  const methods = [
-    { key: "mpesa", label: "M-Pesa", Icon: Smartphone },
-    { key: "card", label: "Card", Icon: CreditCard },
-    { key: "bank", label: "Bank transfer", Icon: Building2 },
-  ];
+  // ── Embedded Pesapal checkout ──
+  if (status === "checkout" && checkoutUrl) {
+    return (
+      <div style={wrap}>
+        <div style={{ width: "100%", maxWidth: "560px" }}>
+          <button onClick={() => { setStatus("idle"); setCheckoutUrl(""); }} style={backBtn}>
+            <ArrowLeft size={16} /> Cancel payment
+          </button>
+          <div style={{ ...card, padding: "0", overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "10px" }}>
+              <ShieldCheck size={18} style={{ color: "#1D9E75" }} />
+              <div>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>Secure Pesapal checkout</p>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Pay {therapist.price} via M-Pesa, card, or bank</p>
+              </div>
+            </div>
+            <iframe
+              title="Pesapal checkout"
+              src={checkoutUrl}
+              style={{ width: "100%", height: "560px", border: "none", display: "block", background: "#fff" }}
+            />
+          </div>
+          <p style={{ fontSize: "12px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>
+            Complete the payment above — this page will confirm automatically. Keep it open.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  // ── Verifying / processing screen ──
-  if (status === "processing") {
+  // ── Creating order ──
+  if (status === "creating") {
     return (
       <div style={wrap}>
         <div style={{ ...card, maxWidth: "440px", textAlign: "center" }}>
           <div style={{ width: "52px", height: "52px", borderRadius: "50%", border: "4px solid var(--border)", borderTopColor: "#534AB7", margin: "0 auto 22px", animation: "spin 1s linear infinite" }} />
-          <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 8px" }}>
-            {method === "mpesa" ? "Confirming your payment…" : "Processing…"}
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6 }}>
-            {statusMsg || "Please wait a moment."}
-          </p>
-          <p style={{ fontSize: "12px", color: "var(--text-dim)", marginTop: "16px" }}>
-            Keep this page open — don't refresh or go back.
-          </p>
+          <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 8px" }}>Starting checkout…</h1>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6 }}>{statusMsg || "Please wait a moment."}</p>
         </div>
       </div>
     );
@@ -185,7 +187,7 @@ export default function Booking() {
             </div>
             <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-strong)", margin: "0 0 6px" }}>Booking confirmed!</h1>
             <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-              Your session with {therapist.name} is reserved. Payment via {methods.find((m) => m.key === method).label} received.
+              Your session with {therapist.name} is reserved. Payment of {therapist.price} received via Pesapal.
             </p>
           </div>
 
@@ -202,8 +204,7 @@ export default function Booking() {
             <ol style={{ margin: 0, paddingLeft: "18px", color: "var(--text-muted)", fontSize: "13px", lineHeight: 1.9 }}>
               <li>{therapist.name} will email you within 24 hours to agree a time.</li>
               <li>You'll get a {therapist.sessionTypes?.[0] === "in-person" ? "location and directions" : "session link or call details"}.</li>
-              {method === "mpesa" && <li>💸 Your session fee has been paid out to {therapist.name}'s M-Pesa.</li>}
-              <li>A receipt for {therapist.price} has been sent to your email.</li>
+              <li>A receipt for {therapist.price} has been sent to your email by Pesapal.</li>
             </ol>
           </div>
 
@@ -220,7 +221,7 @@ export default function Booking() {
   return (
     <div style={wrap}>
       <div style={{ width: "100%", maxWidth: "560px" }}>
-        <button onClick={() => navigate("/find-a-therapist")} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer", marginBottom: "16px" }}>
+        <button onClick={() => navigate("/find-a-therapist")} style={backBtn}>
           <ArrowLeft size={16} /> Back to therapists
         </button>
 
@@ -249,93 +250,35 @@ export default function Booking() {
             </div>
           </div>
 
-          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 12px" }}>Choose a payment method</h2>
-          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-            {methods.map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                onClick={() => setMethod(key)}
-                style={{
-                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px",
-                  padding: "14px", borderRadius: "12px", cursor: "pointer", fontSize: "12px", fontWeight: 600,
-                  background: method === key ? "rgba(83,74,183,0.15)" : "var(--card-2)",
-                  border: method === key ? "2px solid #534AB7" : "1px solid var(--border)",
-                  color: method === key ? "var(--accent-soft)" : "var(--text-muted)",
-                }}
-              >
-                <Icon size={20} /> {label}
-              </button>
-            ))}
-          </div>
+          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 4px" }}>Your details</h2>
+          <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: "0 0 16px" }}>Pesapal sends your receipt here and lets you pay by M-Pesa, card, or bank.</p>
 
-          {/* Method-specific fields */}
-          {method === "mpesa" && (
-            <div style={{ marginBottom: "22px" }}>
-              <label style={label}>M-Pesa phone number</label>
-              <input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="+254 7XX XXX XXX" style={input} />
-              <p style={{ fontSize: "12px", color: "var(--text-dim)", marginTop: "8px" }}>You'll receive an STK push on your phone to authorise {therapist.price}.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "22px" }}>
+            <div>
+              <label style={label}>Full name</label>
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" style={input} />
             </div>
-          )}
-          {method === "card" && (
-            <div style={{ marginBottom: "22px", display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div>
-                <label style={label}>Card number</label>
-                <input value={cardForm.number} onChange={(e) => setCardForm({ ...cardForm, number: e.target.value })} placeholder="1234 5678 9012 3456" style={input} />
-              </div>
-              <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Expiry</label>
-                  <input value={cardForm.expiry} onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })} placeholder="MM/YY" style={input} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>CVC</label>
-                  <input value={cardForm.cvc} onChange={(e) => setCardForm({ ...cardForm, cvc: e.target.value })} placeholder="123" style={input} />
-                </div>
-              </div>
-              <div>
-                <label style={label}>Name on card</label>
-                <input value={cardForm.name} onChange={(e) => setCardForm({ ...cardForm, name: e.target.value })} placeholder="Full name" style={input} />
-              </div>
+            <div>
+              <label style={label}>Email address</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" style={input} />
             </div>
-          )}
-          {method === "bank" && (
-            <div style={{ marginBottom: "22px" }}>
-              <div style={{ background: "var(--card-2)", border: "1px solid var(--border)", borderRadius: "12px", padding: "16px", fontSize: "13px", color: "var(--text-soft)", lineHeight: 2 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-dim)" }}>Bank</span> Equity Bank Kenya</div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-dim)" }}>Account name</span> MindSpace Ltd</div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-dim)" }}>Account no.</span> 0123456789012</div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-dim)" }}>Reference</span> MS-{therapist.id}{therapist.initials}</div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-dim)" }}>Amount</span> {therapist.price}</div>
-              </div>
-              <label style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "14px", cursor: "pointer", fontSize: "13px", color: "var(--text-soft)" }}>
-                <input type="checkbox" checked={bankConfirmed} onChange={(e) => setBankConfirmed(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "#534AB7" }} />
-                I have made the transfer using the reference above
-              </label>
+            <div>
+              <label style={label}>Phone number</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" style={input} />
             </div>
-          )}
+          </div>
 
           {error && (
             <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "#f0a07a" }}>
               ⚠️ {error}
             </div>
           )}
-          {status === "processing" && statusMsg && (
-            <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "var(--text-soft)" }}>
-              {statusMsg}
-            </div>
-          )}
 
-          <button onClick={handlePay} disabled={!canPay || status === "processing"} style={{ ...primaryBtn, width: "100%", opacity: canPay ? 1 : 0.5, cursor: canPay ? "pointer" : "not-allowed" }}>
-            {status === "processing"
-              ? (method === "mpesa" ? "Waiting for M-Pesa…" : "Processing…")
-              : method === "bank"
-              ? "Confirm booking"
-              : `Pay ${therapist.price} & confirm`}
+          <button onClick={handlePay} disabled={!canPay} style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: canPay ? 1 : 0.5, cursor: canPay ? "pointer" : "not-allowed" }}>
+            <ShieldCheck size={16} /> Pay {therapist.price} with Pesapal
           </button>
           <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>
-            {method === "mpesa"
-              ? "🔒 Live M-Pesa sandbox — you'll get a real STK prompt; no real money moves."
-              : "🔒 Card & bank are demo only — no real payment is charged."}
+            🔒 Secured by Pesapal — M-Pesa, Visa, Mastercard & bank supported.
           </p>
         </div>
       </div>
@@ -351,6 +294,10 @@ const wrap = {
 const card = {
   width: "100%", background: "var(--card)", border: "1px solid var(--border)",
   borderRadius: "18px", padding: "28px",
+};
+const backBtn = {
+  display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none",
+  color: "var(--text-muted)", fontSize: "13px", cursor: "pointer", marginBottom: "16px",
 };
 const label = { display: "block", fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px" };
 const input = {
