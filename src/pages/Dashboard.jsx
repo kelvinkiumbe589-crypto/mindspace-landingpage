@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sun, Moon, Sparkles, Send } from "lucide-react";
+import { Sun, Moon, Sparkles, Send, Bell } from "lucide-react";
 import { useTheme } from "../theme";
+import { useSupportUnread, openSupportChat } from "../useSupportUnread";
 import { useReveal } from "../useReveal";
 import CountUp from "../CountUp";
 import Sidebar from "../components/Sidebar";
@@ -15,6 +16,7 @@ const API_BASE = "http://localhost:8080";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const unread = useSupportUnread();
   const [userName, setUserName] = useState("there");
   const [mood, setMood] = useState(null);
   const [moodScore, setMoodScore] = useState(7);
@@ -317,9 +319,23 @@ export default function Dashboard() {
             <div onClick={toggleTheme} title="Toggle light / dark mode" style={iconBtn}>
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </div>
-            <div style={{ ...iconBtn, position: "relative", fontSize: "16px" }}>
-              {"\u{1F514}"}
-              <div style={{ position: "absolute", top: "8px", right: "8px", width: "7px", height: "7px", borderRadius: "50%", background: "#534AB7" }} />
+            <div
+              onClick={openSupportChat}
+              title={unread > 0 ? `${unread} new repl${unread === 1 ? "y" : "ies"} from support` : "Notifications"}
+              className={unread > 0 ? "support-glow" : undefined}
+              style={{ ...iconBtn, position: "relative" }}
+            >
+              <Bell size={18} />
+              {unread > 0 && (
+                <span style={{
+                  position: "absolute", top: "-3px", right: "-3px", minWidth: "18px", height: "18px",
+                  padding: "0 4px", borderRadius: "9px", background: "#e5484d", color: "#fff",
+                  fontSize: "10px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                  border: "2px solid var(--bg)", lineHeight: 1,
+                }}>
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
             </div>
             <AccountGear />
           </div>
