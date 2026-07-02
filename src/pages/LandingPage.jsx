@@ -1,14 +1,33 @@
 import MoodTicker from "../components/MoodTicker";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import Globe from "../components/Globe";
+
+// Lazy-load the three.js globe so it's a separate chunk (keeps initial bundle small)
+const Globe3D = lazy(() => import("../components/ui/3d-globe").then((m) => ({ default: m.Globe3D })));
 
 const API_BASE = "http://localhost:8080";
 const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
 const SUPPORT_PHONE = "+254757306837";
 const SUPPORT_LOCATION = "Nairobi, Kenya";
 const SUPPORT_HOURS = "Mon–Fri, 8am–6pm EAT";
+
+// Worldwide markers for the hero globe
+const GLOBE_MARKERS = [
+  { lat: 40.7128, lng: -74.006, label: "New York", src: "https://assets.aceternity.com/avatars/1.webp" },
+  { lat: 51.5074, lng: -0.1278, label: "London", src: "https://assets.aceternity.com/avatars/2.webp" },
+  { lat: 35.6762, lng: 139.6503, label: "Tokyo", src: "https://assets.aceternity.com/avatars/3.webp" },
+  { lat: -1.2921, lng: 36.8219, label: "Nairobi", src: "https://assets.aceternity.com/avatars/4.webp" },
+  { lat: 48.8566, lng: 2.3522, label: "Paris", src: "https://assets.aceternity.com/avatars/5.webp" },
+  { lat: 28.6139, lng: 77.209, label: "New Delhi", src: "https://assets.aceternity.com/avatars/6.webp" },
+  { lat: -23.5505, lng: -46.6333, label: "São Paulo", src: "https://assets.aceternity.com/avatars/7.webp" },
+  { lat: -33.8688, lng: 151.2093, label: "Sydney", src: "https://assets.aceternity.com/avatars/8.webp" },
+  { lat: 6.5244, lng: 3.3792, label: "Lagos", src: "https://assets.aceternity.com/avatars/9.webp" },
+  { lat: 25.2048, lng: 55.2708, label: "Dubai", src: "https://assets.aceternity.com/avatars/10.webp" },
+  { lat: 1.3521, lng: 103.8198, label: "Singapore", src: "https://assets.aceternity.com/avatars/11.webp" },
+  { lat: 37.5665, lng: 126.978, label: "Seoul", src: "https://assets.aceternity.com/avatars/12.webp" },
+  { lat: 19.4326, lng: -99.1332, label: "Mexico City", src: "https://assets.aceternity.com/avatars/13.webp" },
+];
 
 // Count-up number that animates when scrolled into view
 function CountUp({ value, suffix = "", prefix = "" }) {
@@ -212,8 +231,14 @@ export default function LandingPage() {
         </div>
 
         {/* 3D globe — wellness for people everywhere */}
-        <div style={{ margin: "8px auto 24px", maxWidth: "420px" }}>
-          <Globe size={420} />
+        <div style={{ height: "440px", maxWidth: "560px", margin: "0 auto 8px" }}>
+          <Suspense fallback={<div style={{ height: "100%" }} />}>
+            <Globe3D
+              className="h-full w-full"
+              markers={GLOBE_MARKERS}
+              config={{ atmosphereColor: "#7F77DD", atmosphereIntensity: 0.6, bumpScale: 4, autoRotateSpeed: 0.4 }}
+            />
+          </Suspense>
         </div>
 
         {/* Heading */}
