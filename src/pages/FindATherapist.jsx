@@ -36,7 +36,7 @@ function Sidebar({ active }) {
 
   return (
     <aside className="w-64 bg-[var(--sidebar)] border-r border-[var(--border)] flex flex-col h-screen px-4 py-6 shrink-0 sticky top-0">
-      <div className="flex items-center gap-2.5 px-2 mb-6">
+      <div onClick={() => navigate('/dashboard')} className="flex items-center gap-2.5 px-2 mb-6 cursor-pointer">
         <div className="w-[34px] h-[34px] rounded-[10px] bg-[#534AB7] flex items-center justify-center text-base">
           🧠
         </div>
@@ -77,6 +77,7 @@ function Sidebar({ active }) {
       <button
         onClick={() => {
           localStorage.removeItem('mindspace_user');
+          localStorage.removeItem('mindspace_token');
           navigate('/');
         }}
         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-dim)] hover:bg-[var(--card)] hover:text-[var(--text-soft)] mt-auto text-left"
@@ -174,6 +175,7 @@ const therapists = [
 const sessionIcon = { video: Video, 'in-person': MapPin, phone: Phone };
 
 export default function FindATherapist() {
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [query, setQuery] = useState('');
@@ -404,6 +406,7 @@ export default function FindATherapist() {
 
                   <button
                     disabled={!t.available}
+                    onClick={() => navigate('/booking', { state: { therapist: t } })}
                     className={`mt-auto w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${
                       t.available
                         ? 'bg-indigo-600 hover:bg-indigo-500 text-white'

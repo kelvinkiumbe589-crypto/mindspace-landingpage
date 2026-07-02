@@ -9,6 +9,7 @@ export default function SignUp() {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -66,11 +67,13 @@ export default function SignUp() {
       });
       const data = await response.json();
       if (response.ok) {
-        localStorage.setItem("mindspace_user", JSON.stringify({ name: form.name }));
+        localStorage.setItem("mindspace_user", JSON.stringify({ name: form.name, email: form.email }));
         if (data.token) localStorage.setItem("mindspace_token", data.token);
-        navigate("/dashboard");
+        setSuccess("Account created successfully! Taking you to your dashboard…");
+        setTimeout(() => navigate("/dashboard"), 1200);
       } else {
-        setServerError(data.message || "Registration failed. Please try again.");
+        const msg = data.error || (data && typeof data === "object" ? Object.values(data)[0] : null);
+        setServerError(msg || "Registration failed. Please try again.");
       }
     } catch (err) {
       setServerError("Could not connect to server. Make sure the backend is running on port 8080.");
@@ -119,6 +122,12 @@ export default function SignUp() {
         {serverError && (
           <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "12px", fontSize: "13px", color: "#fca5a5", marginBottom: "16px" }}>
             ⚠️ {serverError}
+          </div>
+        )}
+
+        {success && (
+          <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", borderRadius: "10px", padding: "12px", fontSize: "13px", color: "#7ee0bc", marginBottom: "16px" }}>
+            ✓ {success}
           </div>
         )}
 

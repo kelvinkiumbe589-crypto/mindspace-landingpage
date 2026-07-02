@@ -1,17 +1,48 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = "http://localhost:8080";
+
 export default function SignIn() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (loading) return;
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
     setLoading(true);
-    setTimeout(() => setLoading(false), 1500);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        if (data.token) localStorage.setItem("mindspace_token", data.token);
+        localStorage.setItem("mindspace_user", JSON.stringify({ name: data.username, email: data.email }));
+        setSuccess(`Signed in successfully! Welcome back${data.username ? ", " + data.username.split(" ")[0] : ""}…`);
+        setTimeout(() => navigate("/dashboard"), 1000);
+      } else {
+        const msg = data.error || (data && typeof data === "object" ? Object.values(data)[0] : null);
+        setError(msg || "Sign in failed. Please check your credentials.");
+      }
+    } catch (err) {
+      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogle = () => {
@@ -109,6 +140,20 @@ export default function SignIn() {
           <div style={{ flex: 1, height: "1px", background: "rgba(127,119,221,0.15)" }} />
         </div>
 
+        {/* Error */}
+        {error && (
+          <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#f0a07a" }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Success */}
+        {success && (
+          <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#7ee0bc" }}>
+            ✓ {success}
+          </div>
+        )}
+
         {/* Form */}
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {/* Email */}
@@ -146,6 +191,7 @@ export default function SignIn() {
                 type={showPass ? "text" : "password"}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleSubmit(e); }}
                 placeholder="••••••••"
                 style={{
                   width: "100%", padding: "12px 40px 12px 14px", borderRadius: "10px",

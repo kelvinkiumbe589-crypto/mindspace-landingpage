@@ -130,7 +130,7 @@ export default function MoodJournal() {
 
       {/* SIDEBAR */}
       <aside style={{ width: "260px", background: "var(--sidebar)", borderRight: "1px solid var(--border)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px" }}>
+        <div onClick={() => navigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px", cursor: "pointer" }}>
           <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>🧠</div>
           <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
         </div>
@@ -165,7 +165,7 @@ export default function MoodJournal() {
         </nav>
 
         <div
-          onClick={() => { localStorage.removeItem("mindspace_user"); navigate("/"); }}
+          onClick={() => { localStorage.removeItem("mindspace_user"); localStorage.removeItem("mindspace_token"); navigate("/"); }}
           style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "var(--text-dim)" }}
         >
           <DoorOpen size={16} /> Logout

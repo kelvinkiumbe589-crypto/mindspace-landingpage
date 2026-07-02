@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { DoorOpen, Sun, Moon } from "lucide-react";
+import { DoorOpen, Sun, Moon, Sparkles, Send } from "lucide-react";
 import { useTheme } from "../theme";
 
 const ENTRIES_KEY = "mindspace_entries";
 const POSTS_KEY = "mindspace_posts";
+const API_BASE = "http://localhost:8080";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -17,6 +18,14 @@ export default function Dashboard() {
   const [entries, setEntries] = useState([]);
   const [posts, setPosts] = useState([]);
   const [justLogged, setJustLogged] = useState(false);
+
+  // AI assistant state
+  const [insight, setInsight] = useState("");
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef(null);
 
   const moods = [
     { emoji: "\u{1F622}", label: "Rough", value: 2 },
@@ -231,11 +240,73 @@ export default function Dashboard() {
     color: "var(--text-muted)",
   };
 
+  // ── AI assistant (Gemini via backend) ──
+  const buildMoodContext = () => {
+    if (entries.length === 0) return "";
+    return entries
+      .slice(0, 12)
+      .map((e) => {
+        const tags = (e.tags || []).join(", ") || "none";
+        const note = e.text ? ` — note: "${e.text}"` : "";
+        return `${e.date}: mood ${e.moodScore}/10, emotions: ${tags}${note}`;
+      })
+      .join("\n");
+  };
+
+  const askAI = async (question) => {
+    const res = await fetch(`${API_BASE}/api/ai/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moodContext: buildMoodContext(), question }),
+    });
+    if (!res.ok) throw new Error("AI request failed");
+    const data = await res.json();
+    return data.reply;
+  };
+
+  const generateInsight = async () => {
+    setInsightLoading(true);
+    try {
+      const reply = await askAI("");
+      setInsight(reply);
+    } catch (err) {
+      setInsight("__offline__");
+    } finally {
+      setInsightLoading(false);
+    }
+  };
+
+  const sendChat = async () => {
+    const q = chatInput.trim();
+    if (!q || chatLoading) return;
+    setChatMessages((prev) => [...prev, { role: "user", text: q }]);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const reply = await askAI(q);
+      setChatMessages((prev) => [...prev, { role: "ai", text: reply }]);
+    } catch (err) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "ai", text: "I can't reach the assistant right now. Make sure the MindSpace server is running on port 8080, then try again." },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Only auto-scroll to the chat once a conversation has started —
+    // otherwise this fires on page load and jumps the dashboard to the bottom.
+    if (chatMessages.length === 0) return;
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, chatLoading]);
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", fontFamily: "system-ui, sans-serif", color: "var(--text)" }}>
 
       <aside style={{ width: "260px", background: "var(--sidebar)", borderRight: "1px solid var(--border)", padding: "24px 16px", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", overflowY: "auto", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px" }}>
+        <div onClick={() => navigate("/dashboard")} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 8px", marginBottom: "28px", cursor: "pointer" }}>
           <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>{"\u{1F9E0}"}</div>
           <span style={{ fontSize: "17px", fontWeight: 600 }}>MindSpace</span>
         </div>
@@ -270,7 +341,7 @@ export default function Dashboard() {
         </nav>
 
         <div
-          onClick={() => { localStorage.removeItem("mindspace_user"); navigate("/"); }}
+          onClick={() => { localStorage.removeItem("mindspace_user"); localStorage.removeItem("mindspace_token"); navigate("/"); }}
           style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "var(--text-dim)" }}
         >
           <DoorOpen size={16} /> Logout
@@ -380,17 +451,85 @@ export default function Dashboard() {
           </div>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-soft)", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", marginBottom: "16px" }}>{"✨"} Your insight</span>
-            <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "12px", color: "var(--text-strong)" }}>Weekly insight</h2>
-            <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "16px" }}>
-              {entries.length === 0
-                ? "Log your first mood to start building insights. Every entry helps you see your patterns more clearly."
-                : `You've logged ${entries.length} ${entries.length === 1 ? "entry" : "entries"} so far, with an average mood of ${avgMood}/10${dayStreak > 1 ? ` and a ${dayStreak}-day streak going` : ""}. Keep showing up for yourself.`}
-            </p>
-            <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.25)", borderRadius: "12px", padding: "14px", fontSize: "12px", color: "#3fae86", marginBottom: "14px" }}>
-              {"\u{1F4A1}"} Logging at a consistent time each day makes your trends more meaningful.
-            </div>
+            <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 600, color: "var(--accent-soft)", background: "rgba(83,74,183,0.18)", padding: "4px 10px", borderRadius: "20px", width: "fit-content", marginBottom: "16px" }}><Sparkles size={12} /> Powered by Gemini</span>
+            <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "12px", color: "var(--text-strong)" }}>AI wellness insight</h2>
+
+            {insight === "__offline__" ? (
+              <p style={{ fontSize: "13px", color: "#e07a52", lineHeight: 1.6, marginBottom: "16px" }}>
+                Couldn't reach the AI service. Start the MindSpace server on port 8080 and try again.
+              </p>
+            ) : insight ? (
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "16px" }}>{insight}</p>
+            ) : (
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "16px" }}>
+                {entries.length === 0
+                  ? "Log a mood first, then generate a personalised insight from your entries."
+                  : `You have ${entries.length} ${entries.length === 1 ? "entry" : "entries"} logged. Generate an AI insight based on your recent moods.`}
+              </p>
+            )}
+
+            <button
+              onClick={generateInsight}
+              disabled={insightLoading || entries.length === 0}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "11px", borderRadius: "12px", border: "none", background: entries.length === 0 ? "rgba(83,74,183,0.3)" : "#534AB7", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: entries.length === 0 ? "not-allowed" : "pointer", marginBottom: "12px" }}
+            >
+              <Sparkles size={14} /> {insightLoading ? "Thinking…" : insight ? "Regenerate insight" : "Generate insight"}
+            </button>
             <span onClick={() => navigate("/mood-trends")} style={{ fontSize: "12px", color: "var(--accent-soft)", cursor: "pointer", marginTop: "auto" }}>View your trends {"›"}</span>
+          </div>
+        </div>
+
+        {/* AI chat assistant */}
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <div style={{ width: "34px", height: "34px", borderRadius: "10px", background: "rgba(83,74,183,0.18)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-soft)" }}><Sparkles size={18} /></div>
+            <div>
+              <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, color: "var(--text-strong)" }}>Ask MindSpace AI</h2>
+              <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Ask about your moods, coping tips, or anything on your mind</p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", marginBottom: "16px", paddingRight: "4px" }}>
+            {chatMessages.length === 0 && (
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {["How has my mood been lately?", "Give me a tip to sleep better", "I'm feeling anxious — what can I do?"].map((s) => (
+                  <span key={s} onClick={() => setChatInput(s)} style={{ fontSize: "12px", padding: "8px 12px", borderRadius: "20px", background: "var(--card-2)", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer" }}>{s}</span>
+                ))}
+              </div>
+            )}
+            {chatMessages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{
+                  maxWidth: "80%", padding: "10px 14px", borderRadius: "14px", fontSize: "13px", lineHeight: 1.55,
+                  background: m.role === "user" ? "#534AB7" : "var(--card-2)",
+                  color: m.role === "user" ? "#fff" : "var(--text-soft)",
+                  border: m.role === "user" ? "none" : "1px solid var(--border)",
+                }}>{m.text}</div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div style={{ padding: "10px 14px", borderRadius: "14px", fontSize: "13px", background: "var(--card-2)", color: "var(--text-dim)", border: "1px solid var(--border)" }}>Thinking…</div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
+              placeholder="Type your question…"
+              style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-2)", color: "var(--text)", fontSize: "13px", outline: "none" }}
+            />
+            <button
+              onClick={sendChat}
+              disabled={chatLoading || !chatInput.trim()}
+              style={{ width: "46px", borderRadius: "12px", border: "none", background: chatInput.trim() ? "#534AB7" : "rgba(83,74,183,0.3)", color: "#fff", cursor: chatInput.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <Send size={16} />
+            </button>
           </div>
         </div>
 

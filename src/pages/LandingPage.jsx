@@ -1,13 +1,73 @@
 import MoodTicker from "../components/MoodTicker";
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-
+const API_BASE = "http://localhost:8080";
+const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
+const SUPPORT_PHONE = "+254757306837";
+const SUPPORT_LOCATION = "Nairobi, Kenya";
+const SUPPORT_HOURS = "Mon–Fri, 8am–6pm EAT";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+
+  // Support form state
+  const [sName, setSName] = useState("");
+  const [sEmail, setSEmail] = useState("");
+  const [sPhone, setSPhone] = useState("");
+  const [sMsg, setSMsg] = useState("");
+  const [sStatus, setSStatus] = useState(null); // null | "sending" | "sent" | "mailto"
+
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
+    if (!sName.trim() || !sEmail.trim() || !sMsg.trim()) return;
+    setSStatus("sending");
+    try {
+      const res = await fetch(`${API_BASE}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: sName, email: sEmail, phone: sPhone, message: sMsg }),
+      });
+      if (res.ok) {
+        setSStatus("sent");
+        setSName(""); setSEmail(""); setSPhone(""); setSMsg("");
+        return;
+      }
+      throw new Error("unavailable");
+    } catch (err) {
+      // Fallback: open the visitor's mail client pre-filled to the support inbox
+      const subject = encodeURIComponent(`MindSpace support request from ${sName}`);
+      const body = encodeURIComponent(`Name: ${sName}\nEmail: ${sEmail}\nPhone: ${sPhone}\n\n${sMsg}`);
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+      setSStatus("mailto");
+    }
+  };
+
   return (
     <div style={{ background: "#0d0d14", minHeight: "100vh", color: "#e8e6ff", fontFamily: "system-ui, sans-serif" }}>
+
+      {/* ── TOP CONTACT BAR ── */}
+      <div style={{
+        background: "#4b43a3", color: "#fff", fontSize: "13px",
+        padding: "9px 40px", display: "flex", justifyContent: "space-between",
+        alignItems: "center", flexWrap: "wrap", gap: "10px",
+      }}>
+        <div style={{ display: "flex", gap: "22px", flexWrap: "wrap", alignItems: "center" }}>
+          <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: "7px" }}>
+            <span>📞</span> {SUPPORT_PHONE}
+          </a>
+          <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center", gap: "7px" }}>
+            <span>✉️</span> {SUPPORT_EMAIL}
+          </a>
+          <span style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <span>📍</span> {SUPPORT_LOCATION}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "7px", color: "rgba(255,255,255,0.85)" }}>
+          <span>🕒</span> {SUPPORT_HOURS}
+        </div>
+      </div>
 
       {/* ── NAVBAR ── */}
       <nav style={{
@@ -31,11 +91,16 @@ export default function LandingPage() {
           MindSpace
         </div>
         <div style={{ display: "flex", gap: "32px", fontSize: "14px", color: "#9d9bc4" }}>
-          {["Features", "How it works", "Community", "Therapists"].map(item => (
-            <span key={item} style={{ cursor: "pointer" }}
+          {[
+            { label: "Features", action: () => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }) },
+            { label: "How it works", action: () => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" }) },
+            { label: "Community", action: () => navigate("/community-forum") },
+            { label: "Therapists", action: () => navigate("/find-a-therapist") },
+          ].map(item => (
+            <span key={item.label} onClick={item.action} style={{ cursor: "pointer" }}
               onMouseEnter={e => e.target.style.color = "#e8e6ff"}
               onMouseLeave={e => e.target.style.color = "#9d9bc4"}>
-              {item}
+              {item.label}
             </span>
           ))}
         </div>
@@ -103,7 +168,9 @@ export default function LandingPage() {
             color: "#fff", fontSize: "15px",
             fontWeight: 500, cursor: "pointer",
           }}>Start for free</button>
-          <button style={{
+          <button
+            onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+            style={{
             padding: "13px 32px", borderRadius: "10px",
             border: "1px solid rgba(127,119,221,0.3)",
             background: "transparent", color: "#c4c1f0",
@@ -115,7 +182,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── STATS ── */}
-      <section style={{
+      <section id="how" style={{
         display: "flex", justifyContent: "center", gap: "60px",
         padding: "48px 40px",
         borderTop: "1px solid rgba(127,119,221,0.1)",
@@ -135,7 +202,7 @@ export default function LandingPage() {
       </section>
 <MoodTicker />
       {/* ── FEATURES ── */}
-      <section style={{ padding: "80px 40px" }}>
+      <section id="features" style={{ padding: "80px 40px" }}>
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
           <div style={{ fontSize: "12px", color: "#7F77DD", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "10px" }}>Features</div>
           <h2 style={{ fontSize: "32px", fontWeight: 500, color: "#f0eeff", marginBottom: "10px" }}>Everything you need to feel better</h2>
@@ -200,21 +267,106 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{
-        padding: "24px 40px",
-        borderTop: "1px solid rgba(127,119,221,0.1)",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#4a4870" }}>
-          <span>🧠</span> MindSpace
+      <footer style={{ borderTop: "1px solid rgba(127,119,221,0.12)", background: "#0a0a10" }}>
+        <div style={{
+          maxWidth: "1120px", margin: "0 auto", padding: "56px 40px 32px",
+          display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr", gap: "48px",
+        }}>
+
+          {/* Brand + contact */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+              <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>🧠</div>
+              <span style={{ fontSize: "17px", fontWeight: 600, color: "#f0eeff" }}>MindSpace</span>
+            </div>
+            <p style={{ fontSize: "13px", color: "#8b89b8", lineHeight: 1.7, marginBottom: "20px", maxWidth: "300px" }}>
+              A calm, private space to track your mood, understand your patterns, and get support — built for everyone navigating life.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <a href={`tel:${SUPPORT_PHONE}`} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#c4c1f0", textDecoration: "none" }}>
+                <span style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(83,74,183,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>📞</span>
+                {SUPPORT_PHONE}
+              </a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#c4c1f0", textDecoration: "none" }}>
+                <span style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(83,74,183,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>✉️</span>
+                {SUPPORT_EMAIL}
+              </a>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#c4c1f0" }}>
+                <span style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(83,74,183,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>📍</span>
+                {SUPPORT_LOCATION}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#c4c1f0" }}>
+                <span style={{ width: "30px", height: "30px", borderRadius: "8px", background: "rgba(83,74,183,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>🕒</span>
+                {SUPPORT_HOURS}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick links */}
+          <div>
+            <h4 style={{ fontSize: "13px", fontWeight: 600, color: "#f0eeff", marginBottom: "16px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Explore</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {[
+                { label: "Create account", path: "/signup" },
+                { label: "Sign in", path: "/signin" },
+                { label: "Find a therapist", path: "/find-a-therapist" },
+                { label: "Community forum", path: "/community-forum" },
+              ].map((l) => (
+                <span key={l.label} onClick={() => navigate(l.path)} style={{ fontSize: "13px", color: "#9d9bc4", cursor: "pointer" }}>{l.label}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Support form */}
+          <div>
+            <h4 style={{ fontSize: "13px", fontWeight: 600, color: "#f0eeff", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Need help?</h4>
+            <p style={{ fontSize: "12px", color: "#8b89b8", marginBottom: "16px" }}>Send us your details and issue — we'll get back to you.</p>
+
+            {sStatus === "sent" ? (
+              <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.25)", borderRadius: "12px", padding: "16px", fontSize: "13px", color: "#7ee0bc" }}>
+                ✓ Thanks! Your message has been sent to our team. We'll reach out soon.
+              </div>
+            ) : (
+              <form onSubmit={handleSupportSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {sStatus === "mailto" && (
+                  <p style={{ fontSize: "12px", color: "#f0b89a", margin: 0 }}>Opening your email app to finish sending…</p>
+                )}
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <input value={sName} onChange={(e) => setSName(e.target.value)} required placeholder="Your name" style={fInput} />
+                  <input value={sPhone} onChange={(e) => setSPhone(e.target.value)} placeholder="Phone" style={fInput} />
+                </div>
+                <input value={sEmail} onChange={(e) => setSEmail(e.target.value)} required type="email" placeholder="Email address" style={fInput} />
+                <textarea value={sMsg} onChange={(e) => setSMsg(e.target.value)} required rows={3} placeholder="Describe your issue…" style={{ ...fInput, resize: "none", fontFamily: "inherit" }} />
+                <button type="submit" disabled={sStatus === "sending"} style={{ padding: "12px", borderRadius: "10px", border: "none", background: "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                  {sStatus === "sending" ? "Sending…" : "Submit request"}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
-        <div style={{ fontSize: "12px", color: "#4a4870" }}>@2026 MindSpace. All rights reserved.</div>
-        <div style={{ display: "flex", gap: "20px", fontSize: "12px", color: "#4a4870" }}>
-          {["Privacy", "Terms", "Contact"].map(l => <span key={l} style={{ cursor: "pointer" }}>{l}</span>)}
+
+        {/* Bottom bar */}
+        <div style={{
+          borderTop: "1px solid rgba(127,119,221,0.1)", padding: "20px 40px",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px",
+          maxWidth: "1120px", margin: "0 auto",
+        }}>
+          <div style={{ fontSize: "12px", color: "#6b6790" }}>© 2026 MindSpace. All rights reserved.</div>
+          <div style={{ display: "flex", gap: "20px", fontSize: "12px", color: "#6b6790" }}>
+            <span onClick={() => navigate("/privacy")} style={{ cursor: "pointer" }}>Privacy</span>
+            <span onClick={() => navigate("/terms")} style={{ cursor: "pointer" }}>Terms</span>
+            <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#6b6790", textDecoration: "none" }}>Contact</a>
+          </div>
         </div>
       </footer>
 
     </div>
   );
 }
+
+const fInput = {
+  flex: 1, width: "100%", padding: "11px 14px", borderRadius: "10px",
+  border: "1px solid rgba(127,119,221,0.2)", background: "rgba(255,255,255,0.04)",
+  color: "#e8e6ff", fontSize: "13px", outline: "none", boxSizing: "border-box",
+};
 
