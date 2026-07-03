@@ -15,6 +15,7 @@ import {
   Clock,
   CheckCircle2,
   ArrowRight,
+  Trash2,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
@@ -83,6 +84,26 @@ export default function FindATherapist() {
 
   const therapistById = (id) => therapists.find((t) => t.userId === id);
   const continueBooking = (b) => { const t = therapistById(b.therapistId); if (t) navigate('/booking', { state: { therapist: t } }); };
+
+  const deleteBooking = async (id) => {
+    if (!token()) return;
+    try {
+      await fetch(`${API_BASE}/api/bookings/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token()}` } });
+      loadBookings();
+    } catch (e) {}
+  };
+  const rateBooking = async (id, rating) => {
+    if (!token()) return;
+    try {
+      await fetch(`${API_BASE}/api/bookings/${id}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ rating }),
+      });
+      loadBookings();
+      loadTherapists(); // refresh the therapist's average rating in the directory
+    } catch (e) {}
+  };
   const fmtSched = (iso) => { if (!iso) return 'Time TBD'; try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
   const label = (b) => `${b.sessionType === 'PHYSICAL' ? 'In-person' : 'Online'} · KES ${Number(b.amount).toLocaleString()}`;
 
@@ -153,7 +174,7 @@ export default function FindATherapist() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto min-h-0 flex-1 pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto min-h-0 flex-1 pr-1 content-start">
               {loadingT && <p className="text-[var(--text-dim)] text-sm py-10 sm:col-span-2 text-center">Loading therapists…</p>}
               {!loadingT && filtered.map((t) => (
                 <div key={t.id} className="hover-lift bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 flex flex-col transition-colors">
@@ -231,9 +252,12 @@ export default function FindATherapist() {
                             <p className="text-xs font-semibold truncate">{b.therapistName}</p>
                             <p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p>
                           </div>
-                          {therapistById(b.therapistId) && (
-                            <button onClick={() => continueBooking(b)} className="shrink-0 flex items-center gap-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg">Continue <ArrowRight size={12} /></button>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {therapistById(b.therapistId) && (
+                              <button onClick={() => continueBooking(b)} className="flex items-center gap-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg">Continue <ArrowRight size={12} /></button>
+                            )}
+                            <button onClick={() => deleteBooking(b.id)} title="Remove" className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--text-dim)] hover:text-rose-400 hover:bg-rose-500/10"><Trash2 size={13} /></button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -273,9 +297,19 @@ export default function FindATherapist() {
                     <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5"><CheckCircle2 size={12} className="text-emerald-400" /> History</p>
                     <div className="flex flex-col gap-2">
                       {done.map((b) => (
-                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
-                          <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
-                          <span className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Done</span>
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
+                            <span className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Done</span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-2">
+                            <span className="text-[11px] text-[var(--text-dim)] mr-1">{b.rating ? 'Your rating' : 'Rate:'}</span>
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <button key={n} onClick={() => rateBooking(b.id, n)} title={`${n} star${n > 1 ? 's' : ''}`} className="text-amber-400 hover:scale-110 transition-transform">
+                                <Star size={15} fill={(b.rating || 0) >= n ? 'currentColor' : 'none'} />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
