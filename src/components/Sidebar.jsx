@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu } from "lucide-react";
+import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu, Coffee } from "lucide-react";
 import { logout } from "../auth";
 import AccountDrawer from "./AccountDrawer";
 import SupportChat from "./SupportChat";
+import BuyCoffee from "./BuyCoffee";
 
 const NAV = [
   { label: "Dashboard", icon: Home, path: "/dashboard" },
@@ -105,6 +106,16 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* Buy us a coffee */}
+      <div
+        onClick={() => window.dispatchEvent(new CustomEvent("mindspace:open-coffee"))}
+        title={collapsed ? "Buy us a coffee" : undefined}
+        style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: "12px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "#c98a4b", background: "rgba(176,122,63,0.12)", border: "1px solid rgba(176,122,63,0.3)", marginBottom: "6px", fontWeight: 600 }}
+      >
+        <Coffee size={18} style={{ flexShrink: 0 }} />
+        {!collapsed && "Buy us a coffee"}
+      </div>
+
       {/* Logout */}
       <div
         onClick={() => { logout(); navigate("/"); }}
@@ -117,6 +128,7 @@ export default function Sidebar() {
     </aside>
     <AccountDrawer />
     <SupportChat />
+    <BuyCoffee />
     </>
   );
 }
