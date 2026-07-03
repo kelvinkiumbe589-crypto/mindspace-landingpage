@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Coffee, Heart } from "lucide-react";
+import { X, Coffee, Heart, Smartphone, CreditCard, Building2 } from "lucide-react";
 
 const API_BASE = "http://localhost:8080";
 const PRESETS = [100, 250, 500, 1000];
@@ -9,6 +9,7 @@ export default function BuyCoffee() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState("form"); // form | checkout | done
   const [amount, setAmount] = useState(250);
+  const [payMethod, setPayMethod] = useState("mpesa"); // mpesa | card | bank
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
@@ -83,6 +84,7 @@ export default function BuyCoffee() {
 
   if (!open) return null;
 
+  const payLabel = payMethod === "card" ? "Card" : payMethod === "bank" ? "Bank" : "M-Pesa";
   const close = () => { setOpen(false); setStep("form"); setCheckoutUrl(""); setError(""); };
 
   return (
@@ -111,11 +113,24 @@ export default function BuyCoffee() {
             <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Custom amount" style={inp} />
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" style={{ ...inp, marginTop: "10px" }} />
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Say something nice (optional)" style={{ ...inp, marginTop: "10px", minHeight: "56px", resize: "vertical" }} />
+
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "14px 0 8px" }}>Pay with</p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {[{ k: "mpesa", label: "M-Pesa", Icon: Smartphone }, { k: "card", label: "Card", Icon: CreditCard }, { k: "bank", label: "Bank", Icon: Building2 }].map((m) => {
+                const on = payMethod === m.k;
+                return (
+                  <button key={m.k} onClick={() => setPayMethod(m.k)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "5px", padding: "10px 6px", borderRadius: "10px", cursor: "pointer", fontSize: "12px", fontWeight: 600, background: on ? "rgba(176,122,63,0.15)" : "var(--card-2)", border: on ? "2px solid #b07a3f" : "1px solid var(--border)", color: on ? "#c98a4b" : "var(--text-muted)" }}>
+                    <m.Icon size={18} /> {m.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {error && <p style={{ fontSize: "12px", color: "#f0a07a", margin: "10px 0 0" }}>⚠️ {error}</p>}
             <button onClick={support} disabled={loading} style={{ width: "100%", marginTop: "16px", padding: "13px", borderRadius: "12px", border: "none", background: "#b07a3f", color: "#fff", fontSize: "14px", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-              <Coffee size={16} /> {loading ? "Starting…" : `Support KES ${(Number(amount) || 0).toLocaleString()}`}
+              <Coffee size={16} /> {loading ? "Starting…" : `Support KES ${(Number(amount) || 0).toLocaleString()} with ${payLabel}`}
             </button>
-            <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", margin: "10px 0 0" }}>🔒 Secured by Pesapal — M-Pesa, card & bank</p>
+            <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", margin: "10px 0 0" }}>🔒 Secured by Pesapal — pick {payLabel} on the next screen</p>
           </div>
         )}
 
