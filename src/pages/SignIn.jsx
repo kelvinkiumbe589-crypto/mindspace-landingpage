@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -180,7 +180,7 @@ export default function SignIn() {
 
   const handleGoogle = () => {
     // Replace with your Google OAuth URL
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = `${API_BASE}/oauth2/authorization/google`;
   };
 
   return (

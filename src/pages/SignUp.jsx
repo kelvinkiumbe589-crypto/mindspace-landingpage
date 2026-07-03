@@ -1,6 +1,8 @@
 ﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+
 export default function SignUp() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
@@ -20,7 +22,7 @@ export default function SignUp() {
   };
 
   const handleGoogle = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = `${API_BASE}/oauth2/authorization/google`;
   };
 
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -62,7 +64,7 @@ export default function SignUp() {
     setLoading(true);
     setServerError("");
     try {
-      const response = await fetch("http://localhost:8080/api/auth/register", {
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: form.name, email: form.email, password: form.password }),
@@ -92,7 +94,7 @@ export default function SignUp() {
     setLoading(true);
     setServerError("");
     try {
-      const response = await fetch("http://localhost:8080/api/auth/verify", {
+      const response = await fetch(`${API_BASE}/api/auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, code: code.trim(), purpose: "REGISTER", trustDevice: true }),
@@ -119,7 +121,7 @@ export default function SignUp() {
     setResending(true);
     setServerError("");
     try {
-      const response = await fetch("http://localhost:8080/api/auth/resend", {
+      const response = await fetch(`${API_BASE}/api/auth/resend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, purpose: "REGISTER" }),

@@ -11,7 +11,7 @@ import { loadMoods, saveMood, emojiForScore as emojiFor } from "../moods";
 
 const ENTRIES_KEY = "mindspace_entries";
 const POSTS_KEY = "mindspace_posts";
-const API_BASE = "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 export default function Dashboard() {
   const navigate = useNavigate();

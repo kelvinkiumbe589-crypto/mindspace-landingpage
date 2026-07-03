@@ -23,7 +23,7 @@ import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 const specialties = ['All', 'Anxiety', 'Depression', 'Relationships', 'Trauma', 'Sleep', 'Stress'];
 
 export default function FindATherapist() {

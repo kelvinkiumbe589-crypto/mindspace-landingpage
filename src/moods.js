@@ -1,7 +1,7 @@
 // Mood entry service: uses the backend DB when the user is logged in
 // (JWT in localStorage), and falls back to a localStorage cache otherwise.
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 const ENTRIES_KEY = "mindspace_entries";
 
 const MOODS = [
