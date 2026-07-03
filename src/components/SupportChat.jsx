@@ -124,14 +124,15 @@ export default function SupportChat() {
 
   return (
     <>
-      {/* Floating WhatsApp button — direct message us */}
+      {/* Floating WhatsApp button — stacked above the chat button (hidden while the panel is open) */}
+      {!open && (
       <a
         href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi MindSpace, I need some help.")}`}
         target="_blank"
         rel="noreferrer"
         title="Message us on WhatsApp"
         style={{
-          position: "fixed", bottom: "24px", right: "88px", zIndex: 250,
+          position: "fixed", bottom: "88px", right: "24px", zIndex: 250,
           width: "56px", height: "56px", borderRadius: "50%", textDecoration: "none",
           background: "#25D366", color: "#fff",
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -143,6 +144,7 @@ export default function SupportChat() {
           <path d="M16.001 3.2C8.94 3.2 3.2 8.94 3.2 16c0 2.26.6 4.46 1.73 6.4L3.2 28.8l6.56-1.7A12.74 12.74 0 0 0 16 28.8C23.06 28.8 28.8 23.06 28.8 16S23.06 3.2 16 3.2zm0 23.09c-1.99 0-3.94-.53-5.64-1.54l-.4-.24-3.9 1.02 1.04-3.8-.26-.4A10.5 10.5 0 0 1 5.5 16c0-5.79 4.71-10.5 10.5-10.5S26.5 10.21 26.5 16 21.79 26.29 16 26.29zm5.77-7.86c-.32-.16-1.87-.92-2.16-1.03-.29-.11-.5-.16-.71.16-.21.32-.82 1.03-1 1.24-.18.21-.37.24-.68.08-.32-.16-1.34-.49-2.55-1.57-.94-.84-1.58-1.88-1.76-2.2-.18-.32-.02-.49.14-.65.14-.14.32-.37.48-.55.16-.18.21-.32.32-.53.11-.21.05-.4-.03-.55-.08-.16-.71-1.72-.98-2.35-.26-.62-.52-.54-.71-.55l-.61-.01c-.21 0-.55.08-.84.4-.29.32-1.1 1.08-1.1 2.63s1.13 3.05 1.29 3.26c.16.21 2.22 3.39 5.38 4.75.75.32 1.34.52 1.8.66.76.24 1.44.21 1.98.13.6-.09 1.87-.76 2.13-1.5.26-.74.26-1.37.18-1.5-.08-.13-.29-.21-.61-.37z" />
         </svg>
       </a>
+      )}
 
       {/* Floating support-chat button */}
       <button

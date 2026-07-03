@@ -6,13 +6,14 @@ const API_BASE = "http://localhost:8080";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TIME_SLOTS = ["08:00", "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 
-// Next 14 days as {value: YYYY-MM-DD, dow, day, month}
-function nextDays(n) {
+// Upcoming days the therapist works. allowedDays = JS getDay() ints (0=Sun..6=Sat).
+function availableDays(allowedDays, count) {
   const out = [];
   const base = new Date();
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < 45 && out.length < count; i++) {
     const d = new Date(base);
     d.setDate(base.getDate() + i);
+    if (allowedDays.length && !allowedDays.includes(d.getDay())) continue;
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     out.push({
       value,
@@ -53,7 +54,9 @@ export default function Booking() {
   const [checkoutUrl, setCheckoutUrl] = useState("");
   const bookingIdRef = useRef(null);
 
-  const days = nextDays(14);
+  const allowedDays = therapist?.availableDays?.length ? therapist.availableDays : [1, 2, 3, 4, 5];
+  const slots = therapist?.availableSlots?.length ? therapist.availableSlots : TIME_SLOTS;
+  const days = availableDays(allowedDays, 14);
 
   if (!therapist) {
     return (
@@ -283,7 +286,7 @@ export default function Booking() {
           {/* Time */}
           <h2 style={sectionH}>Pick a time</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "22px" }}>
-            {TIME_SLOTS.map((t) => {
+            {slots.map((t) => {
               const on = sessionTime === t;
               return (
                 <button key={t} onClick={() => setSessionTime(t)} style={{
