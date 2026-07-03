@@ -129,14 +129,22 @@ export default function FindATherapist() {
     };
   }, []);
 
-  const pendingBookings = bookings.filter((b) => b.status === 'pending');
-  const completedBookings = bookings.filter((b) => b.status === 'completed');
+  const now = Date.now();
+  const isPaid = (b) => b.status === 'paid' || b.status === 'completed';
+  const awaitingBookings = bookings.filter((b) => b.status === 'pending'); // payment not completed
   const failedBookings = bookings.filter((b) => b.status === 'failed');
+  const paidBookings = bookings.filter(isPaid);
+  // A paid session is "pending" until its scheduled time passes, then "done".
+  const upcomingBookings = paidBookings.filter((b) => b.scheduledAt && new Date(b.scheduledAt).getTime() > now);
+  const doneBookings = paidBookings.filter((b) => !b.scheduledAt || new Date(b.scheduledAt).getTime() <= now);
 
   const continueBooking = (b) => navigate('/booking', { state: { therapist: b.therapist, resume: b } });
   const dismissBooking = (id) => { removeBooking(id); setBookings(loadBookings()); };
   const fmtWhen = (iso) => {
     try { return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' }); } catch (e) { return ''; }
+  };
+  const fmtSched = (iso) => {
+    try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
   };
 
   // Filter panel state
@@ -446,22 +454,22 @@ export default function FindATherapist() {
               </p>
             </div>
 
-            {/* My sessions: pending, history, and ones that didn't go through */}
-            {(pendingBookings.length > 0 || failedBookings.length > 0 || completedBookings.length > 0) && (
+            {/* My sessions: awaiting payment, upcoming (pending), history (done), and failed */}
+            {(awaitingBookings.length > 0 || failedBookings.length > 0 || upcomingBookings.length > 0 || doneBookings.length > 0) && (
               <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
                 <h3 className="font-semibold text-sm mb-3">My sessions</h3>
 
-                {pendingBookings.length > 0 && (
+                {awaitingBookings.length > 0 && (
                   <div className="mb-4">
                     <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
-                      <Clock size={12} className="text-amber-400" /> Pending
+                      <Clock size={12} className="text-amber-400" /> Awaiting payment
                     </p>
                     <div className="flex flex-col gap-2">
-                      {pendingBookings.map((b) => (
+                      {awaitingBookings.map((b) => (
                         <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
-                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtWhen(b.createdAt)}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()}{b.scheduledAt ? ` · ${fmtSched(b.scheduledAt)}` : ''}</p>
                           </div>
                           <button onClick={() => continueBooking(b)} className="shrink-0 flex items-center gap-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg">
                             Continue <ArrowRight size={12} />
@@ -472,8 +480,49 @@ export default function FindATherapist() {
                   </div>
                 )}
 
-                {failedBookings.length > 0 && (
+                {upcomingBookings.length > 0 && (
                   <div className="mb-4">
+                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
+                      <Clock size={12} className="text-sky-400" /> Upcoming
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {upcomingBookings.map((b) => (
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtSched(b.scheduledAt)}</p>
+                          </div>
+                          <span className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-500/15 text-amber-400">Pending</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {doneBookings.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
+                      <CheckCircle2 size={12} className="text-emerald-400" /> History
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {doneBookings.map((b) => (
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()}{b.scheduledAt ? ` · ${fmtSched(b.scheduledAt)}` : ''}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Done</span>
+                            <button onClick={() => navigate('/booking', { state: { therapist: b.therapist } })} className="text-[11px] font-medium text-indigo-400 hover:text-indigo-300">Book again</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {failedBookings.length > 0 && (
+                  <div>
                     <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
                       <XCircle size={12} className="text-rose-400" /> Didn't go through
                     </p>
@@ -482,7 +531,7 @@ export default function FindATherapist() {
                         <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
-                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtWhen(b.createdAt)}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()}{b.scheduledAt ? ` · ${fmtSched(b.scheduledAt)}` : ''}</p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button onClick={() => continueBooking(b)} className="flex items-center gap-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg">
@@ -490,27 +539,6 @@ export default function FindATherapist() {
                             </button>
                             <button onClick={() => dismissBooking(b.id)} title="Remove" className="text-[var(--text-dim)] hover:text-[var(--text-soft)] px-1">✕</button>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {completedBookings.length > 0 && (
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
-                      <CheckCircle2 size={12} className="text-emerald-400" /> History
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {completedBookings.map((b) => (
-                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
-                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtWhen(b.updatedAt || b.createdAt)}</p>
-                          </div>
-                          <button onClick={() => navigate('/booking', { state: { therapist: b.therapist } })} className="shrink-0 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 px-2 py-1.5">
-                            Book again
-                          </button>
                         </div>
                       ))}
                     </div>

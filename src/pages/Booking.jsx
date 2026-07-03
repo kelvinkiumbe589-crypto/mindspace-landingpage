@@ -53,6 +53,8 @@ export default function Booking() {
   const [phone, setPhone] = useState("+254 ");
   const [fullName, setFullName] = useState(storedUser.name || "");
   const [sessionType, setSessionType] = useState(defaultType);
+  const [sessionDate, setSessionDate] = useState(resume?.sessionDate || "");
+  const [sessionTime, setSessionTime] = useState(resume?.sessionTime || "");
   const [status, setStatus] = useState("idle"); // idle | creating | checkout | done
   const [statusMsg, setStatusMsg] = useState("");
   const [error, setError] = useState("");
@@ -76,7 +78,12 @@ export default function Booking() {
 
   const contact = contactFor(therapist);
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canPay = isValidEmail && phone.replace(/\D/g, "").length >= 12;
+  const canPay = isValidEmail && phone.replace(/\D/g, "").length >= 12 && sessionDate && sessionTime;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const scheduledAt = sessionDate && sessionTime ? new Date(`${sessionDate}T${sessionTime}`).toISOString() : null;
+  const scheduledLabel = scheduledAt
+    ? new Date(scheduledAt).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : "";
 
   const onlineAmount = parseInt(String(therapist.price).replace(/[^0-9]/g, ""), 10) || 1;
   const physicalAmount = Math.round(onlineAmount * PHYSICAL_MULTIPLIER);
@@ -107,6 +114,9 @@ export default function Booking() {
       therapist: slimTherapist(therapist),
       sessionType,
       sessionLabel,
+      sessionDate,
+      sessionTime,
+      scheduledAt,
       amount: amountKes,
       status: "pending",
     };
@@ -151,7 +161,7 @@ export default function Booking() {
       setStatus("checkout");
       const result = await pollStatus(data.orderTrackingId);
       if (result === "success") {
-        updateBooking(bookingIdRef.current, { status: "completed" });
+        updateBooking(bookingIdRef.current, { status: "paid" });
         setStatus("done");
       } else if (result === "timeout") {
         // leave as pending — payment may still land; user can continue later
@@ -226,7 +236,7 @@ export default function Booking() {
             </div>
             <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-strong)", margin: "0 0 6px" }}>Booking confirmed!</h1>
             <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-              Your {sessionLabel.toLowerCase()} session with {therapist.name} is reserved. Payment of KES {amountKes.toLocaleString()} received via Pesapal.
+              Your {sessionLabel.toLowerCase()} session with {therapist.name} is reserved{scheduledLabel ? ` for ${scheduledLabel}` : ""}. Payment of KES {amountKes.toLocaleString()} received via Pesapal.
             </p>
           </div>
 
@@ -307,6 +317,19 @@ export default function Booking() {
                 <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>At the clinic</span>
               </button>
             )}
+          </div>
+
+          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 4px" }}>When works for you?</h2>
+          <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: "0 0 12px" }}>Pick a date and time you're free — your therapist will confirm it.</p>
+          <div style={{ display: "flex", gap: "12px", marginBottom: "22px" }}>
+            <div style={{ flex: 1 }}>
+              <label style={label}>Date</label>
+              <input type="date" min={todayStr} value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} style={input} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={label}>Time</label>
+              <input type="time" value={sessionTime} onChange={(e) => setSessionTime(e.target.value)} style={input} />
+            </div>
           </div>
 
           <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 4px" }}>Your details</h2>
