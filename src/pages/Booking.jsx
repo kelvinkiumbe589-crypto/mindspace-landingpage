@@ -10,9 +10,13 @@ import {
   MapPin,
   Star,
 } from "lucide-react";
+import { addBooking, updateBooking, slimTherapist } from "../bookings";
 
 const API_BASE = "http://localhost:8080";
 const sessionIcon = { video: Video, "in-person": MapPin, phone: Phone };
+
+// In-person sessions cost 1.5x the online price.
+const PHYSICAL_MULTIPLIER = 1.5;
 
 // Deterministic demo contact details derived from the therapist
 function contactFor(t) {
@@ -34,19 +38,27 @@ export default function Booking() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const therapist = state?.therapist;
+  const resume = state?.resume; // continuing a pending/failed booking
 
   const storedUser = (() => {
     try { return JSON.parse(localStorage.getItem("mindspace_user") || "{}"); } catch (e) { return {}; }
   })();
 
+  // Which session types this therapist offers (phone retired — online/physical only)
+  const hasOnline = !therapist || (therapist.sessionTypes || []).includes("video");
+  const hasPhysical = !!therapist && (therapist.sessionTypes || []).includes("in-person");
+  const defaultType = resume?.sessionType || (hasOnline ? "online" : "physical");
+
   const [email, setEmail] = useState(storedUser.email || "");
   const [phone, setPhone] = useState("+254 ");
   const [fullName, setFullName] = useState(storedUser.name || "");
+  const [sessionType, setSessionType] = useState(defaultType);
   const [status, setStatus] = useState("idle"); // idle | creating | checkout | done
   const [statusMsg, setStatusMsg] = useState("");
   const [error, setError] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
   const trackingRef = useRef(null);
+  const bookingIdRef = useRef(resume?.id || null); // reuse the row when continuing
 
   // Direct navigation without a selected therapist
   if (!therapist) {
@@ -65,7 +77,11 @@ export default function Booking() {
   const contact = contactFor(therapist);
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canPay = isValidEmail && phone.replace(/\D/g, "").length >= 12;
-  const amountKes = parseInt(String(therapist.price).replace(/[^0-9]/g, ""), 10) || 1;
+
+  const onlineAmount = parseInt(String(therapist.price).replace(/[^0-9]/g, ""), 10) || 1;
+  const physicalAmount = Math.round(onlineAmount * PHYSICAL_MULTIPLIER);
+  const amountKes = sessionType === "physical" ? physicalAmount : onlineAmount;
+  const sessionLabel = sessionType === "physical" ? "In-person" : "Online";
 
   // Poll Pesapal for the final status. Only COMPLETED is success; FAILED/REVERSED
   // are terminal failures; anything else (pending/invalid-yet-unpaid) keeps polling.
@@ -85,11 +101,28 @@ export default function Booking() {
     return "timeout";
   };
 
+  // Create or update the booking row that tracks this attempt.
+  const persistPending = () => {
+    const payload = {
+      therapist: slimTherapist(therapist),
+      sessionType,
+      sessionLabel,
+      amount: amountKes,
+      status: "pending",
+    };
+    if (bookingIdRef.current) {
+      updateBooking(bookingIdRef.current, payload);
+    } else {
+      bookingIdRef.current = addBooking(payload).id;
+    }
+  };
+
   const handlePay = async () => {
     if (!canPay || status === "creating") return;
     setError("");
     setStatus("creating");
     setStatusMsg("Starting secure Pesapal checkout…");
+    persistPending();
     const parts = fullName.trim().split(/\s+/);
     try {
       const res = await fetch(`${API_BASE}/api/payments/pesapal/order`, {
@@ -97,7 +130,7 @@ export default function Booking() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: amountKes,
-          description: `MindSpace session with ${therapist.name}`,
+          description: `MindSpace ${sessionLabel} session with ${therapist.name}`,
           email,
           phone,
           firstName: parts[0] || "",
@@ -106,27 +139,33 @@ export default function Booking() {
       });
       const data = await res.json();
       if (!res.ok || !data.redirectUrl) {
+        updateBooking(bookingIdRef.current, { status: "failed" });
         setStatus("idle");
         setStatusMsg("");
         setError(data.error || "Could not start the checkout. Please try again.");
         return;
       }
       trackingRef.current = data.orderTrackingId;
+      updateBooking(bookingIdRef.current, { orderTrackingId: data.orderTrackingId });
       setCheckoutUrl(data.redirectUrl);
       setStatus("checkout");
       const result = await pollStatus(data.orderTrackingId);
       if (result === "success") {
+        updateBooking(bookingIdRef.current, { status: "completed" });
         setStatus("done");
       } else if (result === "timeout") {
+        // leave as pending — payment may still land; user can continue later
         setStatus("idle");
         setCheckoutUrl("");
-        setError("We couldn't confirm the payment yet. If you completed it, it may take a moment — check your email for a receipt.");
+        setError("We couldn't confirm the payment yet. If you completed it, it may take a moment — check your email for a receipt. This session is saved under 'My sessions' so you can continue.");
       } else {
+        updateBooking(bookingIdRef.current, { status: "failed" });
         setStatus("idle");
         setCheckoutUrl("");
         setError(result);
       }
     } catch (e) {
+      updateBooking(bookingIdRef.current, { status: "failed" });
       setStatus("idle");
       setStatusMsg("");
       setError("Could not reach the server. Make sure the backend is running on port 8080.");
@@ -146,7 +185,7 @@ export default function Booking() {
               <ShieldCheck size={18} style={{ color: "#1D9E75" }} />
               <div>
                 <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>Secure Pesapal checkout</p>
-                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Pay {therapist.price} via M-Pesa, card, or bank</p>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Pay KES {amountKes.toLocaleString()} ({sessionLabel}) via M-Pesa, card, or bank</p>
               </div>
             </div>
             <iframe
@@ -187,7 +226,7 @@ export default function Booking() {
             </div>
             <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-strong)", margin: "0 0 6px" }}>Booking confirmed!</h1>
             <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-              Your session with {therapist.name} is reserved. Payment of {therapist.price} received via Pesapal.
+              Your {sessionLabel.toLowerCase()} session with {therapist.name} is reserved. Payment of KES {amountKes.toLocaleString()} received via Pesapal.
             </p>
           </div>
 
@@ -250,6 +289,26 @@ export default function Booking() {
             </div>
           </div>
 
+          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 12px" }}>Session type</h2>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "22px" }}>
+            {hasOnline && (
+              <button onClick={() => setSessionType("online")} style={sessionCard(sessionType === "online")}>
+                <Video size={20} />
+                <span style={{ fontWeight: 600 }}>Online</span>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {onlineAmount.toLocaleString()}</span>
+                <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Video call</span>
+              </button>
+            )}
+            {hasPhysical && (
+              <button onClick={() => setSessionType("physical")} style={sessionCard(sessionType === "physical")}>
+                <MapPin size={20} />
+                <span style={{ fontWeight: 600 }}>In-person</span>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {physicalAmount.toLocaleString()}</span>
+                <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>At the clinic</span>
+              </button>
+            )}
+          </div>
+
           <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 4px" }}>Your details</h2>
           <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: "0 0 16px" }}>Pesapal sends your receipt here and lets you pay by M-Pesa, card, or bank.</p>
 
@@ -275,7 +334,7 @@ export default function Booking() {
           )}
 
           <button onClick={handlePay} disabled={!canPay} style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: canPay ? 1 : 0.5, cursor: canPay ? "pointer" : "not-allowed" }}>
-            <ShieldCheck size={16} /> Pay {therapist.price} with Pesapal
+            <ShieldCheck size={16} /> Pay KES {amountKes.toLocaleString()} ({sessionLabel}) with Pesapal
           </button>
           <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>
             🔒 Secured by Pesapal — M-Pesa, Visa, Mastercard & bank supported.
@@ -316,3 +375,10 @@ const contactRow = {
   display: "flex", alignItems: "center", gap: "10px", fontSize: "13px",
   color: "var(--accent-soft)", textDecoration: "none",
 };
+const sessionCard = (active) => ({
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+  padding: "16px 12px", borderRadius: "12px", cursor: "pointer", fontSize: "13px",
+  background: active ? "rgba(83,74,183,0.15)" : "var(--card-2)",
+  border: active ? "2px solid #534AB7" : "1px solid var(--border)",
+  color: active ? "var(--accent-soft)" : "var(--text-muted)",
+});

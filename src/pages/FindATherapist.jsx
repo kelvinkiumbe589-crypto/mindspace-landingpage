@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -13,12 +13,17 @@ import {
   BarChart3,
   Sun,
   Moon,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
 import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
+import { loadBookings, removeBooking } from '../bookings';
 
 const specialties = ['All', 'Anxiety', 'Depression', 'Relationships', 'Trauma', 'Sleep', 'Stress'];
 
@@ -32,7 +37,7 @@ const therapists = [
     specialties: ['Anxiety', 'Stress'],
     rating: 4.9,
     reviews: 132,
-    price: '$80 / session',
+    price: '$1 / session',
     sessionTypes: ['video', 'in-person'],
     available: true,
   },
@@ -45,8 +50,8 @@ const therapists = [
     specialties: ['Relationships'],
     rating: 4.8,
     reviews: 98,
-    price: '$95 / session',
-    sessionTypes: ['video', 'phone'],
+    price: '$1 / session',
+    sessionTypes: ['video'],
     available: true,
   },
   {
@@ -58,7 +63,7 @@ const therapists = [
     specialties: ['Trauma', 'Anxiety'],
     rating: 5.0,
     reviews: 76,
-    price: '$110 / session',
+    price: '$1 / session',
     sessionTypes: ['video'],
     available: false,
   },
@@ -71,8 +76,8 @@ const therapists = [
     specialties: ['Depression', 'Sleep', 'Stress'],
     rating: 4.7,
     reviews: 154,
-    price: '$70 / session',
-    sessionTypes: ['video', 'in-person', 'phone'],
+    price: '$1 / session',
+    sessionTypes: ['video', 'in-person'],
     available: true,
   },
   {
@@ -84,7 +89,7 @@ const therapists = [
     specialties: ['Anxiety', 'Depression'],
     rating: 4.9,
     reviews: 211,
-    price: '$90 / session',
+    price: '$1 / session',
     sessionTypes: ['video', 'in-person'],
     available: true,
   },
@@ -97,8 +102,8 @@ const therapists = [
     specialties: ['Stress', 'Relationships'],
     rating: 4.6,
     reviews: 64,
-    price: '$75 / session',
-    sessionTypes: ['video', 'phone'],
+    price: '$1 / session',
+    sessionTypes: ['video'],
     available: true,
   },
 ];
@@ -112,6 +117,27 @@ export default function FindATherapist() {
   useReveal([]);
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [query, setQuery] = useState('');
+  const [bookings, setBookings] = useState(loadBookings());
+
+  useEffect(() => {
+    const refresh = () => setBookings(loadBookings());
+    window.addEventListener('mindspace:bookings-changed', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.removeEventListener('mindspace:bookings-changed', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, []);
+
+  const pendingBookings = bookings.filter((b) => b.status === 'pending');
+  const completedBookings = bookings.filter((b) => b.status === 'completed');
+  const failedBookings = bookings.filter((b) => b.status === 'failed');
+
+  const continueBooking = (b) => navigate('/booking', { state: { therapist: b.therapist, resume: b } });
+  const dismissBooking = (id) => { removeBooking(id); setBookings(loadBookings()); };
+  const fmtWhen = (iso) => {
+    try { return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' }); } catch (e) { return ''; }
+  };
 
   // Filter panel state
   const [showFilters, setShowFilters] = useState(false);
@@ -226,9 +252,8 @@ export default function FindATherapist() {
                   <p className="text-xs text-[var(--text-muted)] mb-2">Session type</p>
                   <div className="flex gap-2 flex-wrap">
                     {[
-                      { type: 'video', label: 'Video' },
+                      { type: 'video', label: 'Online' },
                       { type: 'in-person', label: 'In-person' },
-                      { type: 'phone', label: 'Phone' },
                     ].map(({ type, label }) => {
                       const Icon = sessionIcon[type];
                       const on = filterSessionTypes.includes(type);
@@ -405,7 +430,7 @@ export default function FindATherapist() {
                   <div className="w-6 h-6 rounded-full bg-[var(--card-2)] flex items-center justify-center text-[var(--text-soft)] shrink-0">
                     3
                   </div>
-                  Meet by video, phone, or in person
+                  Meet online (video) or in person
                 </div>
               </div>
             </div>
@@ -420,6 +445,79 @@ export default function FindATherapist() {
                 platform.
               </p>
             </div>
+
+            {/* My sessions: pending, history, and ones that didn't go through */}
+            {(pendingBookings.length > 0 || failedBookings.length > 0 || completedBookings.length > 0) && (
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
+                <h3 className="font-semibold text-sm mb-3">My sessions</h3>
+
+                {pendingBookings.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
+                      <Clock size={12} className="text-amber-400" /> Pending
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {pendingBookings.map((b) => (
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtWhen(b.createdAt)}</p>
+                          </div>
+                          <button onClick={() => continueBooking(b)} className="shrink-0 flex items-center gap-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg">
+                            Continue <ArrowRight size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {failedBookings.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
+                      <XCircle size={12} className="text-rose-400" /> Didn't go through
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {failedBookings.map((b) => (
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtWhen(b.createdAt)}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={() => continueBooking(b)} className="flex items-center gap-1 text-[11px] font-medium bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg">
+                              Retry <ArrowRight size={12} />
+                            </button>
+                            <button onClick={() => dismissBooking(b.id)} title="Remove" className="text-[var(--text-dim)] hover:text-[var(--text-soft)] px-1">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {completedBookings.length > 0 && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5">
+                      <CheckCircle2 size={12} className="text-emerald-400" /> History
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {completedBookings.map((b) => (
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate">{b.therapist?.name}</p>
+                            <p className="text-[11px] text-[var(--text-dim)]">{b.sessionLabel || 'Session'} · KES {Number(b.amount).toLocaleString()} · {fmtWhen(b.updatedAt || b.createdAt)}</p>
+                          </div>
+                          <button onClick={() => navigate('/booking', { state: { therapist: b.therapist } })} className="shrink-0 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 px-2 py-1.5">
+                            Book again
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>

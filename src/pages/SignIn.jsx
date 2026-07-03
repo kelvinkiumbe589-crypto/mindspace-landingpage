@@ -11,10 +11,11 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [step, setStep] = useState("credentials"); // "credentials" | "otp"
+  const [step, setStep] = useState("credentials"); // "credentials" | "otp" | "forgot" | "reset"
   const [code, setCode] = useState("");
   const [resending, setResending] = useState(false);
   const [trustDevice, setTrustDevice] = useState(true);
+  const [newPassword, setNewPassword] = useState("");
 
   const finishLogin = (data) => {
     if (data.token) localStorage.setItem("mindspace_token", data.token);
@@ -112,6 +113,71 @@ export default function SignIn() {
     }
   };
 
+  // Step 1 of reset: email a code.
+  const sendResetCode = async (e) => {
+    if (e) e.preventDefault();
+    if (loading) return;
+    if (!email.trim()) {
+      setError("Enter your email to reset your password.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setStep("reset");
+        setSuccess(data.message || "If an account exists, a reset code has been sent.");
+      } else {
+        setError(data.error || "Could not send a reset code.");
+      }
+    } catch (err) {
+      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2 of reset: set the new password with the code, then sign in.
+  const doResetPassword = async (e) => {
+    if (e) e.preventDefault();
+    if (loading) return;
+    if (code.trim().length !== 6) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError("New password must be at least 6 characters.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), code: code.trim(), newPassword }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        finishLogin(data);
+        setSuccess("Password reset! Signing you in…");
+        setTimeout(() => navigate("/dashboard"), 1000);
+      } else {
+        setError(data.error || "Could not reset your password.");
+      }
+    } catch (err) {
+      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogle = () => {
     // Replace with your Google OAuth URL
     window.location.href = "http://localhost:8080/oauth2/authorization/google";
@@ -168,11 +234,65 @@ export default function SignIn() {
 
         {/* Heading */}
         <h1 style={{ fontSize: "26px", fontWeight: 600, color: "#f0eeff", marginBottom: "6px" }}>
-          {step === "otp" ? "Verify it's you" : "Welcome back"}
+          {step === "otp" ? "Verify it's you" : step === "forgot" ? "Reset your password" : step === "reset" ? "Set a new password" : "Welcome back"}
         </h1>
         <p style={{ fontSize: "14px", color: "#6b6990", marginBottom: "28px" }}>
-          {step === "otp" ? "Enter the 6-digit code we emailed you" : "Sign in to continue your wellness journey"}
+          {step === "otp" ? "Enter the 6-digit code we emailed you"
+            : step === "forgot" ? "We'll email you a 6-digit reset code"
+            : step === "reset" ? "Enter the code and choose a new password"
+            : "Sign in to continue your wellness journey"}
         </p>
+
+        {/* ── Forgot password: request code ── */}
+        {step === "forgot" && (
+          <>
+            {error && (
+              <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#f0a07a" }}>⚠️ {error}</div>
+            )}
+            {success && (
+              <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#7ee0bc" }}>✓ {success}</div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div>
+                <label style={{ fontSize: "12px", color: "#9d9bc4", display: "block", marginBottom: "6px" }}>Email address</label>
+                <input type="email" autoFocus value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} onKeyDown={(e) => { if (e.key === "Enter") sendResetCode(e); }} placeholder="you@example.com"
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(127,119,221,0.2)", background: "rgba(255,255,255,0.04)", color: "#e8e6ff", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <button onClick={sendResetCode} disabled={loading} type="button" style={{ width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: loading ? "#3d3690" : "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
+                {loading ? "Sending…" : "Send reset code →"}
+              </button>
+              <span onClick={() => { setStep("credentials"); setError(""); setSuccess(""); }} style={{ fontSize: "12px", color: "#9d9bc4", cursor: "pointer", textAlign: "center" }}>← Back to sign in</span>
+            </div>
+          </>
+        )}
+
+        {/* ── Forgot password: enter code + new password ── */}
+        {step === "reset" && (
+          <>
+            {error && (
+              <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#f0a07a" }}>⚠️ {error}</div>
+            )}
+            {success && (
+              <div style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", borderRadius: "10px", padding: "12px 14px", marginBottom: "16px", fontSize: "13px", color: "#7ee0bc" }}>✓ {success}</div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <input inputMode="numeric" autoFocus maxLength={6} value={code} onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")); setError(""); }} placeholder="______"
+                style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid rgba(127,119,221,0.25)", background: "rgba(255,255,255,0.04)", color: "#f0eeff", fontSize: "26px", letterSpacing: "12px", textAlign: "center", outline: "none", boxSizing: "border-box", fontFamily: "monospace" }} />
+              <div>
+                <label style={{ fontSize: "12px", color: "#9d9bc4", display: "block", marginBottom: "6px" }}>New password</label>
+                <input type={showPass ? "text" : "password"} value={newPassword} onChange={(e) => { setNewPassword(e.target.value); setError(""); }} onKeyDown={(e) => { if (e.key === "Enter") doResetPassword(e); }} placeholder="At least 6 characters"
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(127,119,221,0.2)", background: "rgba(255,255,255,0.04)", color: "#e8e6ff", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <button onClick={doResetPassword} disabled={loading} type="button" style={{ width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: loading ? "#3d3690" : "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
+                {loading ? "Resetting…" : "Reset password & sign in →"}
+              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                <span onClick={() => { setStep("credentials"); setCode(""); setNewPassword(""); setError(""); setSuccess(""); }} style={{ color: "#9d9bc4", cursor: "pointer" }}>← Back to sign in</span>
+                <span onClick={sendResetCode} style={{ color: "#7F77DD", cursor: loading ? "default" : "pointer", fontWeight: 500 }}>Resend code</span>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ── OTP step ── */}
         {step === "otp" && (
@@ -291,9 +411,9 @@ export default function SignIn() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
               <label style={{ fontSize: "12px", color: "#9d9bc4" }}>Password</label>
-              <a href="#" style={{ fontSize: "12px", color: "#7F77DD", textDecoration: "none" }}>
+              <span onClick={() => { setStep("forgot"); setError(""); setSuccess(""); }} style={{ fontSize: "12px", color: "#7F77DD", textDecoration: "none", cursor: "pointer" }}>
                 Forgot password?
-              </a>
+              </span>
             </div>
             <div style={{ position: "relative" }}>
               <input
