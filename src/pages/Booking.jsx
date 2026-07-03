@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, ShieldCheck, CheckCircle2, Mail, Video, MapPin, Star, Clock } from "lucide-react";
+import { ArrowLeft, ShieldCheck, CheckCircle2, Mail, Video, MapPin, Star, Clock, Smartphone, CreditCard, Building2 } from "lucide-react";
 
 const API_BASE = "http://localhost:8080";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -46,6 +46,7 @@ export default function Booking() {
   const [phone, setPhone] = useState("+254 ");
   const [fullName, setFullName] = useState(storedUser.name || "");
   const [sessionType, setSessionType] = useState("online");
+  const [payMethod, setPayMethod] = useState("mpesa"); // mpesa | card | bank
   const [sessionDate, setSessionDate] = useState("");
   const [sessionTime, setSessionTime] = useState("");
   const [status, setStatus] = useState("idle"); // idle | creating | checkout | done
@@ -75,6 +76,7 @@ export default function Booking() {
   const physicalAmount = Number(therapist.pricePhysical) || Math.round(onlineAmount * 1.5);
   const amountKes = sessionType === "physical" ? physicalAmount : onlineAmount;
   const sessionLabel = sessionType === "physical" ? "In-person" : "Online";
+  const payLabel = payMethod === "card" ? "Card" : payMethod === "bank" ? "Bank" : "M-Pesa";
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canPay = isValidEmail && phone.replace(/\D/g, "").length >= 12 && sessionDate && sessionTime;
@@ -176,7 +178,7 @@ export default function Booking() {
               <ShieldCheck size={18} style={{ color: "#1D9E75" }} />
               <div>
                 <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>Secure Pesapal checkout</p>
-                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Pay KES {amountKes.toLocaleString()} ({sessionLabel}) via M-Pesa, card, or bank</p>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Pay KES {amountKes.toLocaleString()} ({sessionLabel}) — choose {payLabel} to finish</p>
               </div>
             </div>
             <iframe title="Pesapal checkout" src={checkoutUrl} style={{ width: "100%", height: "560px", border: "none", display: "block", background: "#fff" }} />
@@ -306,12 +308,22 @@ export default function Booking() {
             <div><label style={label}>Phone number</label><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" style={input} /></div>
           </div>
 
+          <h2 style={sectionH}>How would you like to pay?</h2>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+            {[{ k: "mpesa", label: "M-Pesa", Icon: Smartphone }, { k: "card", label: "Card", Icon: CreditCard }, { k: "bank", label: "Bank", Icon: Building2 }].map((m) => (
+              <button key={m.k} onClick={() => setPayMethod(m.k)} style={sessionCard(payMethod === m.k)}>
+                <m.Icon size={20} />
+                <span style={{ fontWeight: 600 }}>{m.label}</span>
+              </button>
+            ))}
+          </div>
+
           {error && <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "#f0a07a" }}>⚠️ {error}</div>}
 
           <button onClick={handlePay} disabled={!canPay} style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: canPay ? 1 : 0.5, cursor: canPay ? "pointer" : "not-allowed" }}>
-            <ShieldCheck size={16} /> Pay KES {amountKes.toLocaleString()} ({sessionLabel}) with Pesapal
+            <ShieldCheck size={16} /> Pay KES {amountKes.toLocaleString()} with {payLabel}
           </button>
-          <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>🔒 Secured by Pesapal — M-Pesa, Visa, Mastercard & bank supported.</p>
+          <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>🔒 Secured by Pesapal — pick {payLabel} on the next screen to complete.</p>
         </div>
       </div>
     </div>
