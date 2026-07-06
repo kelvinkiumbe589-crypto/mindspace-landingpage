@@ -71,9 +71,18 @@ export default function SignUp() {
       });
       const data = await response.json();
       if (response.ok) {
-        // Details OK — a verification code was emailed. Move to the OTP step.
-        setStep(3);
-        setSuccess(data.message || `We sent a 6-digit code to ${form.email}.`);
+        if (data.token) {
+          // OTP disabled — account created and logged in directly.
+          localStorage.setItem("mindspace_user", JSON.stringify({ name: form.name, email: form.email }));
+          localStorage.setItem("mindspace_token", data.token);
+          if (data.deviceToken) localStorage.setItem("mindspace_device_token", data.deviceToken);
+          setSuccess("Account created! Taking you to your dashboard…");
+          setTimeout(() => navigate("/dashboard"), 1000);
+        } else {
+          // A verification code was emailed. Move to the OTP step.
+          setStep(3);
+          setSuccess(data.message || `We sent a 6-digit code to ${form.email}.`);
+        }
       } else {
         const msg = data.error || (data && typeof data === "object" ? Object.values(data)[0] : null);
         setServerError(msg || "Registration failed. Please try again.");
