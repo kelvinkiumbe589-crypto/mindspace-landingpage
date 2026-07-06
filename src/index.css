@@ -51,6 +51,15 @@ body {
   color: var(--text);
 }
 
+/* ── Mobile responsiveness ─────────────────────────────────── */
+html, body { overflow-x: hidden; max-width: 100%; }
+img, video, iframe, canvas { max-width: 100%; }
+
+@media (max-width: 767px) {
+  /* leave room for the floating hamburger button and tighten padding */
+  main { padding: 60px 16px 24px !important; }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Sun, Moon, Sparkles, Send, Bell } from "lucide-react";
 import { useTheme } from "../theme";
 import { useSupportUnread, openSupportChat } from "../useSupportUnread";
+import { useIsMobile } from "../useIsMobile";
 import { useReveal } from "../useReveal";
 import CountUp from "../CountUp";
 import Sidebar from "../components/Sidebar";
@@ -17,6 +18,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const unread = useSupportUnread();
+  const isMobile = useIsMobile();
+  const twoCol = isMobile ? "1fr" : "2fr 1fr";
   const [userName, setUserName] = useState("there");
   const [mood, setMood] = useState(null);
   const [moodScore, setMoodScore] = useState(7);
@@ -341,7 +344,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: "20px", marginBottom: "20px" }}>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "28px" }}>
             <h2 style={{ fontSize: "17px", fontWeight: 600, margin: 0, color: "var(--text-strong)" }}>How's your mood today?</h2>
@@ -503,7 +506,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: "20px", marginBottom: "20px" }}>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
