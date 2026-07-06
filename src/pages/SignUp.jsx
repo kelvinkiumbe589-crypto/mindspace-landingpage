@@ -286,7 +286,7 @@ export default function SignUp() {
                 ← Back
               </button>
               <button onClick={handleSubmit} disabled={loading} type="button" style={{ flex: 2, padding: "13px", borderRadius: "12px", border: "none", background: loading ? "#3d3690" : "#534AB7", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
-                {loading ? "Sending code..." : "Send verification code →"}
+                {loading ? "Creating account..." : "Create account →"}
               </button>
             </div>
           </div>
