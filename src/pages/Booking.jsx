@@ -147,6 +147,9 @@ export default function Booking() {
         setError(order.error || "Could not start the checkout. Please try again.");
         return;
       }
+      // Link the tracking id to the booking now, before the user pays, so the
+      // server-side Pesapal IPN can confirm it even if this tab is closed.
+      await markBooking(booking.id, "attach-order", { orderTrackingId: order.orderTrackingId });
       setCheckoutUrl(order.redirectUrl);
       setStatus("checkout");
       const result = await pollStatus(order.orderTrackingId);
