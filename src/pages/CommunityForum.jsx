@@ -20,94 +20,81 @@ import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+const BOOKMARKS_KEY = 'mindspace_forum_bookmarks';
 const categories = ['All', 'Anxiety', 'Sleep', 'Relationships', 'Wins 🎉', 'General'];
 
-const initialPosts = [
-  {
-    id: 1,
-    author: 'Quietmind22',
-    avatar: 'Q',
-    color: 'bg-indigo-600',
-    time: '2h ago',
-    category: 'Wins 🎉',
-    title: 'Small win: called a friend instead of bottling it up',
-    body: "Almost talked myself out of it, but I'm glad I picked up the phone. Felt lighter afterward than I have in days.",
-    tags: ['hopeful', 'connection'],
-    likes: 24,
-    liked: false,
-    bookmarked: false,
-    comments: [],
-  },
-  {
-    id: 2,
-    author: 'NightOwl_19',
-    avatar: 'N',
-    color: 'bg-emerald-600',
-    time: '5h ago',
-    category: 'Sleep',
-    title: 'Tips for a racing mind at 2am?',
-    body: "Body's exhausted, brain won't stop replaying the day. What's actually worked for you, beyond 'just relax'?",
-    tags: ['sleep', 'advice-wanted'],
-    likes: 18,
-    liked: false,
-    bookmarked: false,
-    comments: [],
-  },
-  {
-    id: 3,
-    author: 'paperplanes',
-    avatar: 'P',
-    color: 'bg-orange-600',
-    time: 'Yesterday',
-    category: 'Anxiety',
-    title: 'Finals week is eating me alive',
-    body: 'Three exams, one week, zero motivation. Anyone else in the same boat, or got a way to make it feel less impossible?',
-    tags: ['anxious', 'school'],
-    likes: 31,
-    liked: false,
-    bookmarked: false,
-    comments: [],
-  },
-  {
-    id: 4,
-    author: 'amara_writes',
-    avatar: 'A',
-    color: 'bg-rose-600',
-    time: 'Yesterday',
-    category: 'General',
-    title: 'Grateful for this space',
-    body: "Been lurking for months. First time posting just to say, reading everyone's entries has made me feel less alone.",
-    tags: ['grateful'],
-    likes: 47,
-    liked: false,
-    bookmarked: false,
-    comments: [],
-  },
-  {
-    id: 5,
-    author: 'driftwood',
-    avatar: 'D',
-    color: 'bg-sky-600',
-    time: '2 days ago',
-    category: 'Relationships',
-    title: 'How do you set boundaries without the guilt?',
-    body: 'I can say the words, but the guilt that follows is exhausting. Looking for what actually helped you sit with it.',
-    tags: ['boundaries', 'advice-wanted'],
-    likes: 29,
-    liked: false,
-    bookmarked: false,
-    comments: [],
-  },
-];
+const PALETTE = ['bg-indigo-600', 'bg-emerald-600', 'bg-orange-600', 'bg-rose-600', 'bg-sky-600', 'bg-purple-600'];
 
-const POSTS_KEY = 'mindspace_posts';
+const token = () => localStorage.getItem('mindspace_token');
+
+function colorFor(name) {
+  let h = 0;
+  for (const ch of name || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+}
+
+function timeAgo(iso) {
+  if (!iso) return 'Just now';
+  const d = new Date(iso);
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (Number.isNaN(s)) return '';
+  if (s < 60) return 'Just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 172800) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function loadBookmarks() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+// Map a backend ReplyResponse to the shape the UI renders.
+function mapReply(r) {
+  const author = r.author || 'Anonymous';
+  return {
+    id: r.id,
+    author,
+    avatar: author === 'Anonymous' ? '?' : author.charAt(0).toUpperCase(),
+    text: r.content,
+    time: timeAgo(r.createdAt),
+  };
+}
+
+// Map a backend PostResponse to the shape the UI renders.
+function mapPost(p, bookmarks) {
+  const author = p.author || 'Anonymous';
+  return {
+    id: p.id,
+    author,
+    avatar: author === 'Anonymous' ? '?' : author.charAt(0).toUpperCase(),
+    color: author === 'Anonymous' ? 'bg-zinc-600' : colorFor(author),
+    time: timeAgo(p.createdAt),
+    category: p.category || 'General',
+    title: p.title,
+    body: p.content,
+    tags: [],
+    likes: 0,
+    liked: false,
+    bookmarked: bookmarks ? bookmarks.has(p.id) : false,
+    replyCount: p.replyCount || 0,
+    comments: null, // loaded lazily when the thread is opened
+  };
+}
 
 export default function CommunityForum() {
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const unread = useSupportUnread();
   const [activeCategory, setActiveCategory] = useState('All');
   const [query, setQuery] = useState('');
-  const [posts, setPosts] = useState(initialPosts);
+  const [posts, setPosts] = useState([]);
+  const [loadError, setLoadError] = useState('');
   const [userName, setUserName] = useState('there');
   const [showSaved, setShowSaved] = useState(false);
 
@@ -118,10 +105,24 @@ export default function CommunityForum() {
   const [newCategory, setNewCategory] = useState('');
   const [newTags, setNewTags] = useState('');
   const [newAnonymous, setNewAnonymous] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   // Comment UI state
   const [openComments, setOpenComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
+
+  const loadPosts = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts`);
+      if (!res.ok) throw new Error('failed');
+      const data = await res.json();
+      const bm = loadBookmarks();
+      setPosts(data.map((p) => mapPost(p, bm)));
+      setLoadError('');
+    } catch (e) {
+      setLoadError("Couldn't load the community feed. Please try again in a moment.");
+    }
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('mindspace_user');
@@ -131,96 +132,102 @@ export default function CommunityForum() {
         if (user.name) setUserName(user.name.split(' ')[0]);
       } catch (e) {}
     }
-
-    // Load saved posts (shared with the dashboard); seed with samples on first visit
-    try {
-      const stored = localStorage.getItem(POSTS_KEY);
-      const parsed = stored ? JSON.parse(stored) : null;
-      if (Array.isArray(parsed) && parsed.length) {
-        setPosts(parsed);
-      } else {
-        localStorage.setItem(POSTS_KEY, JSON.stringify(initialPosts));
-      }
-    } catch (e) {}
+    loadPosts();
   }, []);
 
   const initial = userName.charAt(0).toUpperCase();
 
-  // Update posts state and persist so the dashboard stays in sync
-  const persistPosts = (updater) => {
+  const persistBookmarks = (ids) => {
+    try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([...ids])); } catch (e) {}
+  };
+
+  const toggleBookmark = (id) => {
     setPosts((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      localStorage.setItem(POSTS_KEY, JSON.stringify(next));
+      const next = prev.map((p) => (p.id === id ? { ...p, bookmarked: !p.bookmarked } : p));
+      persistBookmarks(next.filter((p) => p.bookmarked).map((p) => p.id));
       return next;
     });
   };
 
-  const toggleBookmark = (id) => {
-    persistPosts((prev) => prev.map((p) => (p.id === id ? { ...p, bookmarked: !p.bookmarked } : p)));
-  };
-
+  // Likes are a local-only reaction (the backend has no like model yet).
   const toggleLike = (id) => {
-    persistPosts((prev) =>
+    setPosts((prev) =>
       prev.map((p) =>
-        p.id === id
-          ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 }
-          : p
+        p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
       )
     );
   };
 
-  const toggleComments = (id) => {
-    setOpenComments((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleComments = async (id) => {
+    const willOpen = !openComments[id];
+    setOpenComments((prev) => ({ ...prev, [id]: willOpen }));
+    if (!willOpen) return;
+    // Load the thread's replies from the server when it's opened.
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts/${id}`);
+      if (res.ok) {
+        const detail = await res.json();
+        const comments = (detail.replies || []).map(mapReply);
+        setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, comments } : p)));
+      }
+    } catch (e) {}
   };
 
-  const addComment = (id) => {
+  const addComment = async (id) => {
     const text = (commentDrafts[id] || '').trim();
     if (!text) return;
-    persistPosts((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              comments: [
-                ...p.comments,
-                { id: Date.now(), author: userName, avatar: initial, text, time: 'Just now' },
-              ],
-            }
-          : p
-      )
-    );
+    if (!token()) { navigate('/signin'); return; }
     setCommentDrafts((prev) => ({ ...prev, [id]: '' }));
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts/${id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ content: text, isAnonymous: false }),
+      });
+      if (res.ok) {
+        const reply = await res.json();
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, comments: [...(p.comments || []), mapReply(reply)], replyCount: (p.replyCount || 0) + 1 }
+              : p
+          )
+        );
+      }
+    } catch (e) {}
   };
 
   const canPost = newTitle.trim() && newBody.trim() && newCategory;
 
-  const handleNewPost = () => {
-    if (!canPost) return;
-    const post = {
-      id: Date.now(),
-      author: newAnonymous ? 'Anonymous' : userName,
-      avatar: newAnonymous ? '?' : initial,
-      color: newAnonymous ? 'bg-zinc-600' : 'bg-indigo-600',
-      time: 'Just now',
-      category: newCategory,
-      title: newTitle.trim(),
-      body: newBody.trim(),
-      tags: newTags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-      likes: 0,
-      liked: false,
-      bookmarked: false,
-      comments: [],
-    };
-    persistPosts((prev) => [post, ...prev]);
-    setShowComposer(false);
-    setNewTitle('');
-    setNewBody('');
-    setNewCategory('');
-    setNewTags('');
-    setNewAnonymous(false);
+  const handleNewPost = async () => {
+    if (!canPost || posting) return;
+    if (!token()) { navigate('/signin'); return; }
+    setPosting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          content: newBody.trim(),
+          category: newCategory,
+          isAnonymous: newAnonymous,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setPosts((prev) => [mapPost(created, loadBookmarks()), ...prev]);
+        setShowComposer(false);
+        setNewTitle('');
+        setNewBody('');
+        setNewCategory('');
+        setNewTags('');
+        setNewAnonymous(false);
+      }
+    } catch (e) {}
+    finally {
+      setPosting(false);
+    }
   };
 
   const savedCount = posts.filter((p) => p.bookmarked).length;
@@ -230,7 +237,7 @@ export default function CommunityForum() {
     const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
     const matchesQuery =
       p.title.toLowerCase().includes(query.toLowerCase()) ||
-      p.body.toLowerCase().includes(query.toLowerCase());
+      (p.body || '').toLowerCase().includes(query.toLowerCase());
     return matchesCategory && matchesQuery;
   });
 
@@ -342,7 +349,7 @@ export default function CommunityForum() {
                   {post.body && (
                     <p className="text-sm text-[var(--text-muted)] mb-3 leading-relaxed">{post.body}</p>
                   )}
-                  {post.tags.length > 0 && (
+                  {post.tags && post.tags.length > 0 && (
                     <div className="flex gap-2 mb-3 flex-wrap">
                       {post.tags.map((tag) => (
                         <span
@@ -369,7 +376,7 @@ export default function CommunityForum() {
                         openComments[post.id] ? 'text-indigo-400' : 'hover:text-indigo-400'
                       }`}
                     >
-                      <MessageSquare size={15} /> {post.comments.length}
+                      <MessageSquare size={15} /> {post.comments ? post.comments.length : post.replyCount}
                     </button>
                     <button
                       onClick={() => toggleBookmark(post.id)}
@@ -385,7 +392,7 @@ export default function CommunityForum() {
                   {/* Comments */}
                   {openComments[post.id] && (
                     <div className="mt-4 pt-4 border-t border-[var(--border)] flex flex-col gap-3">
-                      {post.comments.map((c) => (
+                      {(post.comments || []).map((c) => (
                         <div key={c.id} className="flex items-start gap-2.5">
                           <div className="w-7 h-7 rounded-full bg-[var(--card-2)] flex items-center justify-center text-xs font-semibold shrink-0">
                             {c.avatar}
@@ -398,6 +405,9 @@ export default function CommunityForum() {
                           </div>
                         </div>
                       ))}
+                      {post.comments && post.comments.length === 0 && (
+                        <p className="text-xs text-[var(--text-dim)]">No replies yet — be the first to offer support.</p>
+                      )}
                       <div className="flex items-center gap-2 mt-1">
                         <input
                           value={commentDrafts[post.id] || ''}
@@ -422,7 +432,9 @@ export default function CommunityForum() {
                 </div>
               ))}
               {filtered.length === 0 &&
-                (showSaved ? (
+                (loadError ? (
+                  <p className="text-[var(--text-dim)] text-sm text-center py-10">{loadError}</p>
+                ) : showSaved ? (
                   <div className="text-center py-12 text-[var(--text-dim)]">
                     <Bookmark size={28} className="mx-auto mb-3 text-[var(--text-dim)]" />
                     <p className="text-sm text-[var(--text-muted)] mb-1">No bookmarks yet</p>
@@ -430,10 +442,16 @@ export default function CommunityForum() {
                       Tap the bookmark icon on any post to save it here for later.
                     </p>
                   </div>
-                ) : (
+                ) : query || activeCategory !== 'All' ? (
                   <p className="text-[var(--text-dim)] text-sm text-center py-10">
                     No posts match your search.
                   </p>
+                ) : (
+                  <div className="text-center py-12 text-[var(--text-dim)]">
+                    <MessageSquare size={28} className="mx-auto mb-3 text-[var(--text-dim)]" />
+                    <p className="text-sm text-[var(--text-muted)] mb-1">No posts yet</p>
+                    <p className="text-xs">Be the first to share something with the community.</p>
+                  </div>
                 ))}
             </div>
           </div>
@@ -576,10 +594,10 @@ export default function CommunityForum() {
 
             <button
               onClick={handleNewPost}
-              disabled={!canPost}
+              disabled={!canPost || posting}
               className="w-full py-3 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:bg-[var(--card-2)] disabled:text-[var(--text-dim)] disabled:cursor-not-allowed"
             >
-              {canPost ? "Post to Community" : "Add a title, your thoughts & a category"}
+              {posting ? "Posting…" : canPost ? "Post to Community" : "Add a title, your thoughts & a category"}
             </button>
           </div>
         </div>
