@@ -4,12 +4,14 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
+import { useIsMobile } from "../useIsMobile";
 
 const PREFS_KEY = "mindspace_prefs";
 
 export default function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [userName, setUserName] = useState("there");
   const [nameInput, setNameInput] = useState("");
   const [savedName, setSavedName] = useState(false);
@@ -146,7 +148,7 @@ export default function Settings() {
         <div style={card}>
           <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "6px", color: "var(--text-strong)" }}>Appearance</h2>
           <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Choose how MindSpace looks to you.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginTop: "16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "14px", marginTop: "16px" }}>
             {[
               { key: "light", label: "Light", bg: "#f3f2fb", sidebar: "#ffffff", bar: "rgba(83,74,183,0.28)" },
               { key: "dark", label: "Dark", bg: "#0d0d14", sidebar: "#0a0a10", bar: "rgba(127,119,221,0.4)" },

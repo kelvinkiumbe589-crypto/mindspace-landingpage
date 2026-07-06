@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
+import { useIsMobile } from "../useIsMobile";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
 import { loadMoods } from "../moods";
@@ -14,6 +15,7 @@ const EMOTION_COLORS = ["#534AB7", "#7F77DD", "#D85A30", "#9D9BC4", "#1D9E75", "
 export default function MoodTrends() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [userName, setUserName] = useState("there");
   const [range, setRange] = useState("Week");
   const [loading, setLoading] = useState(true);
@@ -210,7 +212,7 @@ export default function MoodTrends() {
         ) : (
           <>
             {/* Summary stat cards */}
-            <div className="reveal" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
+            <div className="reveal" style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
               <div style={{ background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
                 <p style={{ fontSize: "12px", color: "var(--text-soft)", margin: 0 }}>Average mood</p>
                 <p style={{ fontSize: "26px", fontWeight: 700, color: "#fff", margin: "4px 0 0" }}>{avg}<span style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 400 }}> / 10</span></p>
@@ -261,7 +263,7 @@ export default function MoodTrends() {
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px" }}>
 
               {/* Emotion frequency */}
               <div className="hover-lift" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "16px", padding: "24px" }}>
