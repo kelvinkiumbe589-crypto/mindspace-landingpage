@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu, Coffee, X } from "lucide-react";
+import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu, Coffee, Star, X } from "lucide-react";
 import { logout } from "../auth";
 import AccountDrawer from "./AccountDrawer";
 import SupportChat from "./SupportChat";
 import BuyCoffee from "./BuyCoffee";
+import RatingModal from "./RatingModal";
 import { useIsMobile } from "../useIsMobile";
 
 const NAV = [
@@ -157,6 +158,16 @@ export default function Sidebar() {
           {!collapsed && "Buy us a coffee"}
         </div>
 
+        {/* Rate us */}
+        <div
+          onClick={() => { window.dispatchEvent(new CustomEvent("mindspace:open-rating")); setMobileOpen(false); }}
+          title={collapsed ? "Rate MindSpace" : undefined}
+          style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: "12px", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", color: "#d6a90a", background: "rgba(245,179,1,0.10)", border: "1px solid rgba(245,179,1,0.28)", marginBottom: "6px", fontWeight: 600 }}
+        >
+          <Star size={18} style={{ flexShrink: 0 }} />
+          {!collapsed && "Rate MindSpace"}
+        </div>
+
         {/* Logout */}
         <div
           onClick={() => { logout(); navigate("/"); }}
@@ -170,6 +181,7 @@ export default function Sidebar() {
       <AccountDrawer />
       <SupportChat />
       <BuyCoffee />
+      <RatingModal />
     </>
   );
 }

@@ -62,6 +62,13 @@ export default function Dashboard() {
     { icon: "⚙️", label: "Settings", path: "/settings" },
   ];
 
+  // Gently prompt for a rating once, ~25s after landing on the dashboard.
+  // The modal itself skips users who've already rated or dismissed it.
+  useEffect(() => {
+    const t = setTimeout(() => window.dispatchEvent(new CustomEvent("mindspace:maybe-rating")), 25000);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const googleName = urlParams.get("name");
