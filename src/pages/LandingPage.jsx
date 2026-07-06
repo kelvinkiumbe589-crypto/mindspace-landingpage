@@ -2,6 +2,7 @@ import MoodTicker from "../components/MoodTicker";
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "../useIsMobile";
 
 // Lazy-load the three.js globe so it's a separate chunk (keeps initial bundle small)
 const Globe3D = lazy(() => import("../components/ui/3d-globe").then((m) => ({ default: m.Globe3D })));
@@ -61,6 +62,7 @@ function CountUp({ value, suffix = "", prefix = "" }) {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Support form state
   const [sName, setSName] = useState("");
@@ -163,7 +165,7 @@ export default function LandingPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: scrolled ? "10px 40px" : "18px 40px",
+        padding: scrolled ? (isMobile ? "10px 16px" : "10px 40px") : (isMobile ? "14px 16px" : "18px 40px"),
         borderBottom: "1px solid rgba(127,119,221,0.15)",
         position: "sticky",
         top: 0,
@@ -181,7 +183,7 @@ export default function LandingPage() {
           }}>🧠</div>
           MindSpace
         </div>
-        <div style={{ display: "flex", gap: "32px", fontSize: "14px", color: "#9d9bc4" }}>
+        <div style={{ display: isMobile ? "none" : "flex", gap: "32px", fontSize: "14px", color: "#9d9bc4" }}>
           {[
             { label: "Features", action: () => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }) },
             { label: "How it works", action: () => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" }) },
@@ -334,7 +336,7 @@ export default function LandingPage() {
           <p style={{ fontSize: "15px", color: "#9d9bc4" }}>Built for everyone navigating life — wherever you are in the world</p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: "900px", margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: "16px", maxWidth: "900px", margin: "0 auto" }}>
           {[
             { icon: "😊", title: "Daily mood journal", desc: "Log your mood score, tag emotions, and write journal entries. Build self-awareness over time.", color: "rgba(83,74,183,0.2)" },
             { icon: "🤖", title: "AI wellness insights", desc: "Personalized insights powered by Gemini AI that analyzes your mood patterns and offers practical tips.", color: "rgba(29,158,117,0.2)" },
@@ -371,7 +373,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", maxWidth: "1000px", margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: "16px", maxWidth: "1000px", margin: "0 auto" }}>
           {[
             { n: "1", icon: "📝", title: "Log how you feel", desc: "Take a few seconds each day to record your mood, tag the emotions behind it, and write what's on your mind — no pressure, just honesty." },
             { n: "2", icon: "✨", title: "Get AI insights", desc: "Our Gemini-powered assistant reads your entries and reflects back gentle, personalised insights and practical tips — like a friend who remembers." },
@@ -487,7 +489,7 @@ export default function LandingPage() {
       <footer style={{ borderTop: "1px solid rgba(127,119,221,0.12)", background: "#0a0a10" }}>
         <div style={{
           maxWidth: "1120px", margin: "0 auto", padding: "56px 40px 32px",
-          display: "grid", gridTemplateColumns: "1.4fr 1fr 1.4fr", gap: "48px",
+          display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr 1.4fr", gap: "48px",
         }}>
 
           {/* Brand + contact */}
