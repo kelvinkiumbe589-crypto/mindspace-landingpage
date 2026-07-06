@@ -223,13 +223,8 @@ export default function SignIn() {
       }}>
 
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "32px" }}>
-          <div style={{
-            width: "36px", height: "36px", background: "#534AB7",
-            borderRadius: "10px", display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: "18px",
-          }}>🧠</div>
-          <span style={{ fontSize: "18px", fontWeight: 600, color: "#f0eeff" }}>MindSpace</span>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
+          <img src="/logo.png" alt="MindSpace" style={{ width: "220px", maxWidth: "80%", height: "auto" }} />
         </div>
 
         {/* Heading */}

@@ -494,10 +494,7 @@ export default function LandingPage() {
 
           {/* Brand + contact */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-              <div style={{ width: "34px", height: "34px", background: "#534AB7", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>🧠</div>
-              <span style={{ fontSize: "17px", fontWeight: 600, color: "#f0eeff" }}>MindSpace</span>
-            </div>
+            <img src="/logo.png" alt="MindSpace" style={{ width: "150px", height: "auto", marginBottom: "14px", display: "block" }} />
             <p style={{ fontSize: "13px", color: "#8b89b8", lineHeight: 1.7, marginBottom: "20px", maxWidth: "300px" }}>
               A calm, private space to track your mood, understand your patterns, and get support — built for everyone navigating life.
             </p>
