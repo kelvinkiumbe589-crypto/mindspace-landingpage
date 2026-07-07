@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sun, Moon, Sparkles, Send, Bell } from "lucide-react";
+import { Sun, Moon, Sparkles, Send } from "lucide-react";
 import { useTheme } from "../theme";
-import { useSupportUnread, openSupportChat } from "../useSupportUnread";
+import NotificationBell from "../components/NotificationBell";
 import { useIsMobile } from "../useIsMobile";
 import { useReveal } from "../useReveal";
 import CountUp from "../CountUp";
@@ -17,7 +17,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const unread = useSupportUnread();
   const isMobile = useIsMobile();
   const twoCol = isMobile ? "1fr" : "2fr 1fr";
   const [userName, setUserName] = useState("there");
@@ -329,24 +328,7 @@ export default function Dashboard() {
             <div onClick={toggleTheme} title="Toggle light / dark mode" style={iconBtn}>
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </div>
-            <div
-              onClick={openSupportChat}
-              title={unread > 0 ? `${unread} new repl${unread === 1 ? "y" : "ies"} from support` : "Notifications"}
-              className={unread > 0 ? "support-glow" : undefined}
-              style={{ ...iconBtn, position: "relative" }}
-            >
-              <Bell size={18} />
-              {unread > 0 && (
-                <span style={{
-                  position: "absolute", top: "-3px", right: "-3px", minWidth: "18px", height: "18px",
-                  padding: "0 4px", borderRadius: "9px", background: "#e5484d", color: "#fff",
-                  fontSize: "10px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-                  border: "2px solid var(--bg)", lineHeight: 1,
-                }}>
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </div>
+            <NotificationBell size={38} />
             <AccountGear />
           </div>
         </div>

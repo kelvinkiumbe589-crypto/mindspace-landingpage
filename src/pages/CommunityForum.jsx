@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell,
   Search,
   Plus,
   Heart,
@@ -18,7 +17,7 @@ import {
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
-import { useSupportUnread, openSupportChat } from '../useSupportUnread';
+import NotificationBell from '../components/NotificationBell';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 const BOOKMARKS_KEY = 'mindspace_forum_bookmarks';
@@ -90,7 +89,6 @@ function mapPost(p, bookmarks) {
 export default function CommunityForum() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const unread = useSupportUnread();
   const [activeCategory, setActiveCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [posts, setPosts] = useState([]);
@@ -291,18 +289,7 @@ export default function CommunityForum() {
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button
-              onClick={openSupportChat}
-              title={unread > 0 ? `${unread} new repl${unread === 1 ? 'y' : 'ies'} from support` : 'Notifications'}
-              className={`relative w-9 h-9 rounded-full bg-[var(--card)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors ${unread > 0 ? 'support-glow' : ''}`}
-            >
-              <Bell size={18} />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#e5484d] text-white text-[10px] font-bold flex items-center justify-center border-2 border-[var(--bg)] leading-none">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </button>
+            <NotificationBell size={36} />
             <AccountGear size={36} />
           </div>
         </div>
