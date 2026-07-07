@@ -4,6 +4,7 @@ import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu, 
 import { logout } from "../auth";
 import AccountDrawer from "./AccountDrawer";
 import SupportChat from "./SupportChat";
+import AiChat from "./AiChat";
 import BuyCoffee from "./BuyCoffee";
 import RatingModal from "./RatingModal";
 import { useIsMobile } from "../useIsMobile";
@@ -180,6 +181,7 @@ export default function Sidebar() {
       </aside>
       <AccountDrawer />
       <SupportChat />
+      <AiChat />
       <BuyCoffee />
       <RatingModal />
     </>
