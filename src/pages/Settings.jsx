@@ -7,6 +7,8 @@ import { AccountGear } from "../components/AccountDrawer";
 import { useIsMobile } from "../useIsMobile";
 
 const PREFS_KEY = "mindspace_prefs";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+const token = () => localStorage.getItem("mindspace_token");
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -46,6 +48,20 @@ export default function Settings() {
       const storedPrefs = localStorage.getItem(PREFS_KEY);
       if (storedPrefs) setPrefs((p) => ({ ...p, ...JSON.parse(storedPrefs) }));
     } catch (e) {}
+    // The daily reminder preference lives on the server (it drives the reminder
+    // emails), so load the authoritative value for signed-in users.
+    if (token()) {
+      fetch(`${API_BASE}/api/reminders/preference`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && typeof data.enabled === "boolean") {
+            setPrefs((p) => ({ ...p, dailyReminder: data.enabled }));
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const savePrefs = (next) => {
@@ -53,7 +69,18 @@ export default function Settings() {
     localStorage.setItem(PREFS_KEY, JSON.stringify(next));
   };
 
-  const togglePref = (key) => savePrefs({ ...prefs, [key]: !prefs[key] });
+  const togglePref = (key) => {
+    const next = { ...prefs, [key]: !prefs[key] };
+    savePrefs(next);
+    // Persist the daily reminder choice to the backend so it controls the emails.
+    if (key === "dailyReminder" && token()) {
+      fetch(`${API_BASE}/api/reminders/preference`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ enabled: next.dailyReminder }),
+      }).catch(() => {});
+    }
+  };
 
   const saveName = () => {
     const name = nameInput.trim();
