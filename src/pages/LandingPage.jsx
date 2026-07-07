@@ -125,10 +125,13 @@ export default function LandingPage() {
     if (!sName.trim() || !sEmail.trim() || !sMsg.trim()) return;
     setSStatus("sending");
     try {
-      const res = await fetch(`${API_BASE}/api/contact`, {
+      // Start a support conversation the admin sees in the same inbox as logged-in
+      // users. Since the visitor isn't logged in, the admin's reply is emailed to them.
+      const message = (sPhone.trim() ? `Phone: ${sPhone.trim()}\n\n` : "") + sMsg;
+      const res = await fetch(`${API_BASE}/api/support/guest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: sName, email: sEmail, phone: sPhone, message: sMsg }),
+        body: JSON.stringify({ name: sName, email: sEmail, message }),
       });
       if (res.ok) {
         setSStatus("sent");
