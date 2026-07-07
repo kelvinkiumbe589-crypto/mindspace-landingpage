@@ -20,6 +20,7 @@ import {
 import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
 import Sidebar from '../components/Sidebar';
+import SessionChat from '../components/SessionChat';
 import { AccountGear } from '../components/AccountDrawer';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
@@ -285,7 +286,10 @@ export default function FindATherapist() {
                       {upcoming.map((b) => (
                         <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
                           <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
-                          <span className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full bg-sky-500/15 text-sky-400">Confirmed</span>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <SessionChat bookingId={b.id} title={b.therapistName} />
+                            <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sky-500/15 text-sky-400">Confirmed</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -300,7 +304,10 @@ export default function FindATherapist() {
                         <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3">
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
-                            <span className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Done</span>
+                            <div className="shrink-0 flex items-center gap-2">
+                              <SessionChat bookingId={b.id} title={b.therapistName} />
+                              <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400">Done</span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 mt-2">
                             <span className="text-[11px] text-[var(--text-dim)] mr-1">{b.rating ? 'Your rating' : 'Rate:'}</span>
