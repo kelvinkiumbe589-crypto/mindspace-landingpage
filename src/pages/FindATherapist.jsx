@@ -287,17 +287,31 @@ export default function FindATherapist() {
                     <p className="text-[11px] uppercase tracking-wide text-[var(--text-dim)] mb-2 flex items-center gap-1.5"><CheckCircle2 size={12} className="text-sky-400" /> Upcoming</p>
                     <div className="flex flex-col gap-2">
                       {upcoming.map((b) => (
-                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
-                          <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
-                          <div className="shrink-0 flex items-center gap-2">
-                            {b.sessionType === 'ONLINE' && (
-                              <button onClick={() => setActiveRoom(b.id)} className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Join video call">
-                                <Video size={12} /> Join call
-                              </button>
-                            )}
-                            <SessionChat bookingId={b.id} title={b.therapistName} />
-                            <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sky-500/15 text-sky-400">Confirmed</span>
+                        <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex flex-col gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
+                            <div className="shrink-0 flex items-center gap-2">
+                              {b.sessionType === 'ONLINE' && (
+                                <button onClick={() => setActiveRoom(b.id)} className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Join video call">
+                                  <Video size={12} /> Join call
+                                </button>
+                              )}
+                              {b.sessionType === 'PHYSICAL' && b.practiceMapUrl && (
+                                <a href={b.practiceMapUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Open location in Google Maps">
+                                  <MapPin size={12} /> Location
+                                </a>
+                              )}
+                              <SessionChat bookingId={b.id} title={b.therapistName} />
+                              <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sky-500/15 text-sky-400">Confirmed</span>
+                            </div>
                           </div>
+                          {b.sessionType === 'PHYSICAL' && (b.practiceAddress || b.checkInCode) && (
+                            <div className="text-[11px] text-[var(--text-dim)] border-t border-[var(--border)] pt-2 flex flex-col gap-1">
+                              {b.practiceAddress && <span className="flex items-start gap-1.5"><MapPin size={12} className="mt-0.5 shrink-0" /> {b.practiceAddress}</span>}
+                              {b.practiceNotes && <span className="pl-[18px]">{b.practiceNotes}</span>}
+                              {b.checkInCode && <span className="pl-[18px]">Check-in code: <span className="font-semibold text-[var(--text-soft)] tracking-widest">{b.checkInCode}</span></span>}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
