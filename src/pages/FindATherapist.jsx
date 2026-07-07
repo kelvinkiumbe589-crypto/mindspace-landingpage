@@ -21,6 +21,7 @@ import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
 import Sidebar from '../components/Sidebar';
 import SessionChat from '../components/SessionChat';
+import SessionRoom from '../components/SessionRoom';
 import { AccountGear } from '../components/AccountDrawer';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
@@ -78,6 +79,7 @@ export default function FindATherapist() {
   });
 
   // Booking groups (server statuses)
+  const [activeRoom, setActiveRoom] = useState(null);
   const incomplete = bookings.filter((b) => b.status === 'PENDING_PAYMENT' || b.status === 'FAILED');
   const awaiting = bookings.filter((b) => b.status === 'AWAITING_APPROVAL');
   const upcoming = bookings.filter((b) => b.status === 'APPROVED');
@@ -110,6 +112,7 @@ export default function FindATherapist() {
 
   return (
     <div className="flex bg-[var(--bg)] min-h-screen text-[var(--text)] font-sans">
+      {activeRoom && <SessionRoom bookingId={activeRoom} onClose={() => setActiveRoom(null)} />}
       <Sidebar />
 
       <main className="flex-1 px-8 py-6 h-screen flex flex-col overflow-hidden">
@@ -287,6 +290,11 @@ export default function FindATherapist() {
                         <div key={b.id} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 flex items-center justify-between gap-2">
                           <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
                           <div className="shrink-0 flex items-center gap-2">
+                            {b.sessionType === 'ONLINE' && (
+                              <button onClick={() => setActiveRoom(b.id)} className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Join video call">
+                                <Video size={12} /> Join call
+                              </button>
+                            )}
                             <SessionChat bookingId={b.id} title={b.therapistName} />
                             <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sky-500/15 text-sky-400">Confirmed</span>
                           </div>
