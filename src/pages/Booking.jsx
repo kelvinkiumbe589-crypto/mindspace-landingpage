@@ -259,13 +259,13 @@ export default function Booking() {
           <div style={{ display: "flex", gap: "10px", marginBottom: "22px" }}>
             <button onClick={() => setSessionType("online")} style={sessionCard(sessionType === "online")}>
               <Video size={20} /><span style={{ fontWeight: 600 }}>Online</span>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {onlineAmount.toLocaleString()}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Video call</span>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {onlineAmount.toLocaleString()}/hr</span>
+              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Video call · 1 hour</span>
             </button>
             <button onClick={() => setSessionType("physical")} style={sessionCard(sessionType === "physical")}>
               <MapPin size={20} /><span style={{ fontWeight: 600 }}>In-person</span>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {physicalAmount.toLocaleString()}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>At the clinic</span>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {physicalAmount.toLocaleString()}/hr</span>
+              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>At the clinic · 1 hour</span>
             </button>
           </div>
 

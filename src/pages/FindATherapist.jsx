@@ -201,7 +201,7 @@ export default function FindATherapist() {
                   </div>
                   <div className="flex items-center gap-2 text-[var(--text-dim)] mb-4">
                     <Video size={14} /><MapPin size={14} />
-                    <span className="text-xs ml-auto text-[var(--text-soft)] font-medium">from KES {Number(t.priceOnline).toLocaleString()}</span>
+                    <span className="text-xs ml-auto text-[var(--text-soft)] font-medium">from KES {Number(t.priceOnline).toLocaleString()}/hr</span>
                   </div>
                   <button disabled={!t.available} onClick={() => navigate('/booking', { state: { therapist: t } })}
                     className={`mt-auto w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${t.available ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-[var(--card-2)] text-[var(--text-dim)] cursor-not-allowed'}`}>
