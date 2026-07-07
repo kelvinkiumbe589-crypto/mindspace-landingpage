@@ -155,7 +155,7 @@ export default function SignUp() {
       <div style={{ width: "100%", maxWidth: "440px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "24px", padding: "40px", backdropFilter: "blur(20px)", boxShadow: "0 25px 60px rgba(0,0,0,0.4)", position: "relative", zIndex: 1 }}>
 
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
-          <img src="/logo.png" alt="MindSpace" style={{ width: "220px", maxWidth: "80%", height: "auto" }} />
+          <img src="/logo.png" alt="MindSpace" style={{ width: "110px", height: "110px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(127,119,221,0.3)", boxShadow: "0 8px 24px rgba(83,74,183,0.35)" }} />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>

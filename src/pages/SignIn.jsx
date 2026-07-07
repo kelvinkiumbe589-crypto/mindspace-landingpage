@@ -224,7 +224,7 @@ export default function SignIn() {
 
         {/* Logo */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
-          <img src="/logo.png" alt="MindSpace" style={{ width: "220px", maxWidth: "80%", height: "auto" }} />
+          <img src="/logo.png" alt="MindSpace" style={{ width: "110px", height: "110px", borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(127,119,221,0.3)", boxShadow: "0 8px 24px rgba(83,74,183,0.35)" }} />
         </div>
 
         {/* Heading */}

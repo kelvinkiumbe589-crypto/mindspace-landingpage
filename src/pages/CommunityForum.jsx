@@ -79,8 +79,8 @@ function mapPost(p, bookmarks) {
     title: p.title,
     body: p.content,
     tags: [],
-    likes: 0,
-    liked: false,
+    likes: p.likeCount || 0,
+    liked: p.likedByMe || false,
     bookmarked: bookmarks ? bookmarks.has(p.id) : false,
     replyCount: p.replyCount || 0,
     comments: null, // loaded lazily when the thread is opened
@@ -113,7 +113,11 @@ export default function CommunityForum() {
 
   const loadPosts = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/forum/posts`);
+      // Send the token when signed in so the server can flag which posts I've liked.
+      const t = token();
+      const res = await fetch(`${API_BASE}/api/forum/posts`, {
+        headers: t ? { Authorization: `Bearer ${t}` } : {},
+      });
       if (!res.ok) throw new Error('failed');
       const data = await res.json();
       const bm = loadBookmarks();
@@ -149,13 +153,37 @@ export default function CommunityForum() {
     });
   };
 
-  // Likes are a local-only reaction (the backend has no like model yet).
-  const toggleLike = (id) => {
+  // Likes are live and shared across users. We update the UI optimistically,
+  // then reconcile with the authoritative count the server returns.
+  const toggleLike = async (id) => {
+    if (!token()) { navigate('/signin'); return; }
+
+    // Optimistic flip.
     setPosts((prev) =>
       prev.map((p) =>
         p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
       )
     );
+
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts/${id}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) throw new Error('failed');
+      const { likeCount, liked } = await res.json();
+      // Reconcile with the server's real numbers.
+      setPosts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, liked, likes: likeCount } : p))
+      );
+    } catch (e) {
+      // Roll back the optimistic change if the request failed.
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
+        )
+      );
+    }
   };
 
   const toggleComments = async (id) => {
