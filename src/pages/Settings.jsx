@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Camera, Trash2, Globe, Lock } from "lucide-react";
 import { useTheme } from "../theme";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
+import Avatar from "../components/Avatar";
 import { useIsMobile } from "../useIsMobile";
 import { enablePush, pushSupported } from "../push";
 import { loadMoods } from "../moods";
+import { getProfile, saveAvatar, removeAvatar, setAvatarVisibility, fileToAvatarDataUrl } from "../lib/avatar";
 
 const PREFS_KEY = "mindspace_prefs";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -24,7 +26,13 @@ export default function Settings() {
     weeklyInsight: true,
     communityReplies: false,
     anonymousMode: true,
+    showActivity: true,
   });
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarVisibility, setAvatarVisibilityState] = useState("private");
+  const [avatarMsg, setAvatarMsg] = useState("");
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const fileRef = useRef(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
   const [pushBusy, setPushBusy] = useState(false);
@@ -117,6 +125,8 @@ export default function Settings() {
         const first = user.name ? user.name.split(" ")[0] : "there";
         setUserName(first);
         setNameInput(user.name || "");
+        setAvatarUrl(user.avatarUrl || "");
+        setAvatarVisibilityState(user.avatarVisibility || "private");
       } catch (e) {}
     }
     try {
@@ -168,6 +178,44 @@ export default function Settings() {
     setUserName(name.split(" ")[0]);
     setSavedName(true);
     setTimeout(() => setSavedName(false), 2000);
+  };
+
+  const pickPhoto = () => fileRef.current?.click();
+
+  const onPhotoChosen = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setAvatarBusy(true);
+    setAvatarMsg("");
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      const res = await saveAvatar(dataUrl, avatarVisibility);
+      setAvatarUrl(dataUrl);
+      setAvatarMsg(photoMsg(res, avatarVisibility));
+    } catch (err) {
+      setAvatarMsg(err.message || "Couldn't set that photo.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const clearPhoto = async () => {
+    setAvatarBusy(true);
+    await removeAvatar();
+    setAvatarUrl("");
+    setAvatarMsg("Photo removed.");
+    setAvatarBusy(false);
+  };
+
+  const changeVisibility = async (v) => {
+    if (v === avatarVisibility) return;
+    setAvatarVisibilityState(v);
+    setAvatarBusy(true);
+    setAvatarMsg("");
+    const res = await setAvatarVisibility(v);
+    setAvatarMsg(avatarUrl ? photoMsg(res, v) : "");
+    setAvatarBusy(false);
   };
 
   const clearJournal = () => {
@@ -229,6 +277,67 @@ export default function Settings() {
         {/* Profile */}
         <div style={card}>
           <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "16px", color: "var(--text-strong)" }}>Profile</h2>
+
+          {/* Profile photo */}
+          <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "10px" }}>Profile photo</label>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "14px", flexWrap: "wrap" }}>
+            <div style={{ position: "relative" }}>
+              <Avatar name={nameInput || userName} src={avatarUrl} size={64} ring="var(--card)" />
+              <button
+                onClick={pickPhoto}
+                title="Change photo"
+                style={{ position: "absolute", right: -4, bottom: -4, width: "26px", height: "26px", borderRadius: "50%", border: "2px solid var(--card)", background: "#534AB7", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <Camera size={13} />
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                onClick={pickPhoto}
+                disabled={avatarBusy}
+                style={{ padding: "9px 14px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-2)", color: "var(--text-soft)", fontSize: "13px", fontWeight: 600, cursor: avatarBusy ? "wait" : "pointer" }}
+              >
+                {avatarUrl ? "Change photo" : "Upload photo"}
+              </button>
+              {avatarUrl && (
+                <button
+                  onClick={clearPhoto}
+                  disabled={avatarBusy}
+                  style={{ padding: "9px 14px", borderRadius: "10px", border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", fontSize: "13px", fontWeight: 600, cursor: avatarBusy ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  <Trash2 size={14} /> Remove
+                </button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onPhotoChosen} style={{ display: "none" }} />
+          </div>
+
+          {/* Who can see it */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "6px" }}>
+            {[
+              { key: "private", label: "Only me", icon: Lock, desc: "Stays on this device" },
+              { key: "public", label: "People I chat with", icon: Globe, desc: "Visible in your messages" },
+            ].map((opt) => {
+              const on = avatarVisibility === opt.key;
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => changeVisibility(opt.key)}
+                  disabled={avatarBusy}
+                  style={{ flex: 1, textAlign: "left", padding: "10px 12px", borderRadius: "12px", cursor: avatarBusy ? "wait" : "pointer", background: on ? "rgba(83,74,183,0.14)" : "var(--card-2)", border: on ? "1px solid #534AB7" : "1px solid var(--border)" }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "13px", fontWeight: 600, color: on ? "var(--text-strong)" : "var(--text-soft)" }}>
+                    <Icon size={14} /> {opt.label}
+                  </span>
+                  <span style={{ display: "block", fontSize: "11px", color: "var(--text-dim)", marginTop: "2px" }}>{opt.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          {avatarMsg && <p style={{ fontSize: "12px", color: avatarMsg.startsWith("✓") ? "#7ee0bc" : "var(--text-dim)", margin: "4px 0 18px" }}>{avatarMsg}</p>}
+          {!avatarMsg && <div style={{ height: "18px" }} />}
+
           <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "8px" }}>Display name</label>
           <div style={{ display: "flex", gap: "10px" }}>
             <input
@@ -326,6 +435,7 @@ export default function Settings() {
             { key: "weeklyInsight", title: "Weekly insight summary", desc: "Get your mood recap every week" },
             { key: "communityReplies", title: "Community replies", desc: "Notify me when someone replies to my posts" },
             { key: "anonymousMode", title: "Anonymous in community", desc: "Hide your real name on forum posts" },
+            { key: "showActivity", title: "Show my activity status", desc: "Let people you chat with see when you're active and your last seen. Turning this off also hides theirs from you." },
           ].map((item) => (
             <div key={item.key} style={rowStyle}>
               <div>
@@ -400,4 +510,11 @@ export default function Settings() {
       </main>
     </div>
   );
+}
+
+function photoMsg(res, visibility) {
+  if (visibility === "private") return "Saved. Only you can see your photo.";
+  if (res?.shared) return "✓ Saved and visible to people you chat with.";
+  if (res?.reason === "signed-out") return "Saved on this device. Sign in to share it with others.";
+  return "Saved on this device — sharing with others switches on once the server supports photos.";
 }

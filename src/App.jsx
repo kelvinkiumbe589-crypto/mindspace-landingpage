@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Booking from "./pages/Booking";
 import Legal from "./pages/Legal";
 import { isAuthenticated } from "./auth";
+import { trackPageView } from "./lib/analytics";
 
 // Gate app routes behind login. Logged-out users are sent to Sign In.
 function RequireAuth({ children }) {
@@ -44,10 +45,20 @@ function ScrollToTop() {
   return null;
 }
 
+// Record an anonymous page view on every route change.
+function PageViewTracker() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <PageViewTracker />
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />

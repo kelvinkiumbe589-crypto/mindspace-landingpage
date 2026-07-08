@@ -46,7 +46,8 @@ function CountUp({ value, suffix = "", prefix = "" }) {
           const duration = 1400;
           const start = performance.now();
           const tick = (now) => {
-            const p = Math.min((now - start) / duration, 1);
+            const p = Math.min((now - start) / duration,
+             1);
             const eased = 1 - Math.pow(1 - p, 3);
             setDisplay(Math.round(value * eased));
             if (p < 1) requestAnimationFrame(tick);

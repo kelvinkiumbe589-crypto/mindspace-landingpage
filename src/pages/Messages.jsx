@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
 import NotificationBell from '../components/NotificationBell';
+import Avatar from '../components/Avatar';
 import {
   Search, Plus, Send, Users, ArrowLeft, MoreVertical, UserPlus,
   Bell, BellOff, Ban, Flag, LogOut, X, MessageSquare, Shield,
@@ -10,6 +11,13 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 const WS_BASE = API_BASE.replace(/^http/, 'ws');
 const token = () => localStorage.getItem('mindspace_token');
+
+// Whether the user opted to share their activity status. When off, presence is
+// mutual-hidden: we neither advertise ours nor show others'.
+function activityShared() {
+  try { return JSON.parse(localStorage.getItem('mindspace_prefs') || '{}').showActivity !== false; }
+  catch { return true; }
+}
 
 const PALETTE = ['bg-indigo-600', 'bg-emerald-600', 'bg-orange-600', 'bg-rose-600', 'bg-sky-600', 'bg-purple-600'];
 function colorFor(name) {
@@ -33,6 +41,17 @@ function clockTime(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+function lastSeenLabel(iso) {
+  if (!iso) return 'Offline';
+  const d = new Date(iso);
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (Number.isNaN(s)) return 'Offline';
+  if (s < 120) return 'last seen just now';
+  if (s < 3600) return `last seen ${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `last seen ${Math.floor(s / 3600)}h ago`;
+  if (s < 172800) return 'last seen yesterday';
+  return `last seen ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
 }
 
 async function api(path, options = {}) {
@@ -61,6 +80,7 @@ export default function Messages() {
   const [error, setError] = useState('');
   const [sheet, setSheet] = useState(null);          // 'new' | 'group' | 'add' | null
   const [menuOpen, setMenuOpen] = useState(false);
+  const [presence, setPresence] = useState({}); // userId -> { online, lastSeen }
   const scrollRef = useRef(null);
   const wsRef = useRef(null);
   const activeIdRef = useRef(null);
@@ -78,6 +98,18 @@ export default function Messages() {
     try {
       const detail = await api(`/api/chat/conversations/${id}`);
       setActive(detail);
+      // Seed presence from any status the detail carries on its members.
+      if (activityShared() && Array.isArray(detail.members)) {
+        setPresence((prev) => {
+          const next = { ...prev };
+          for (const m of detail.members) {
+            if (m.userId && (m.online != null || m.lastSeen)) {
+              next[m.userId] = { online: !!m.online, lastSeen: m.lastSeen };
+            }
+          }
+          return next;
+        });
+      }
       // Clear the unread badge locally.
       setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
     } catch (e) { setError(e.message); }
@@ -92,9 +124,22 @@ export default function Messages() {
     if (!token()) return;
     const ws = new WebSocket(`${WS_BASE}/ws/chat?token=${encodeURIComponent(token())}`);
     wsRef.current = ws;
+    // Tell the server whether to advertise our presence to others (mutual opt-out).
+    ws.onopen = () => {
+      try { ws.send(JSON.stringify({ type: 'presence-visibility', visible: activityShared() })); } catch (e) {}
+    };
     ws.onmessage = (ev) => {
       let data;
       try { data = JSON.parse(ev.data); } catch { return; }
+      // Presence updates: { type:'presence', userId, online, lastSeen }.
+      if (data.type === 'presence') {
+        if (!activityShared() || !data.userId) return;
+        setPresence((prev) => ({
+          ...prev,
+          [data.userId]: { online: !!data.online, lastSeen: data.lastSeen ?? prev[data.userId]?.lastSeen },
+        }));
+        return;
+      }
       if (data.type !== 'message') return;
       const { conversationId, message } = data;
       // If it's the open conversation, append (dedupe by id).
@@ -189,6 +234,18 @@ export default function Messages() {
 
   const cur = conversations.find((c) => c.id === active?.id);
 
+  // Presence for the open direct chat (thread header only).
+  const activeOtherId = active && active.type === 'DIRECT' ? otherUserId(active) : null;
+  const activePresence = activeOtherId ? presence[activeOtherId] : null;
+  const activeOnline = activityShared() && !!activePresence?.online;
+  const directStatus = !activityShared()
+    ? 'Direct message'
+    : activeOnline
+      ? 'Active now'
+      : activePresence?.lastSeen
+        ? lastSeenLabel(activePresence.lastSeen)
+        : 'Direct message';
+
   return (
     <div className="flex h-screen bg-[var(--bg)] text-[var(--text)]">
       <Sidebar />
@@ -244,9 +301,13 @@ export default function Messages() {
                   onClick={() => openConversation(c.id)}
                   className={`w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[var(--card-2)] transition-colors ${active?.id === c.id ? 'bg-[var(--card-2)]' : ''}`}
                 >
-                  <div className={`w-11 h-11 rounded-full ${colorFor(c.title)} flex items-center justify-center text-sm font-semibold shrink-0 relative`}>
-                    {c.type === 'GROUP' ? <Users size={18} /> : c.avatar}
-                  </div>
+                  {c.type === 'GROUP' ? (
+                    <div className={`w-11 h-11 rounded-full ${colorFor(c.title)} flex items-center justify-center text-sm font-semibold shrink-0`}>
+                      <Users size={18} />
+                    </div>
+                  ) : (
+                    <Avatar name={c.title} src={c.avatarUrl} size={44} ring="var(--bg)" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-sm truncate">{c.title}{c.type === 'GROUP' && <span className="text-[var(--text-dim)] font-normal"> · {c.memberCount}</span>}</span>
@@ -276,15 +337,19 @@ export default function Messages() {
                 {/* Thread header */}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)] shrink-0">
                   <button onClick={() => setActive(null)} className="sm:hidden text-[var(--text-muted)]"><ArrowLeft size={20} /></button>
-                  <div className={`w-9 h-9 rounded-full ${colorFor(active.title)} flex items-center justify-center text-sm font-semibold shrink-0`}>
-                    {active.type === 'GROUP' ? <Users size={16} /> : active.title?.charAt(0)?.toUpperCase()}
-                  </div>
+                  {active.type === 'GROUP' ? (
+                    <div className={`w-9 h-9 rounded-full ${colorFor(active.title)} flex items-center justify-center text-sm font-semibold shrink-0`}>
+                      <Users size={16} />
+                    </div>
+                  ) : (
+                    <Avatar name={active.title} src={active.avatarUrl} size={38} showDot online={activeOnline} ring="var(--bg)" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{active.title}</p>
-                    <p className="text-xs text-[var(--text-dim)] truncate">
+                    <p className={`text-xs truncate ${activeOnline ? 'text-emerald-400' : 'text-[var(--text-dim)]'}`}>
                       {active.type === 'GROUP'
                         ? active.members.map((m) => m.username).join(', ')
-                        : 'Direct message'}
+                        : directStatus}
                     </p>
                   </div>
                   <div className="relative">
@@ -500,9 +565,7 @@ function PeopleSheet({ mode, onClose, onDone, conversationId, existingIds = [], 
                 disabled={busy}
                 className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-[var(--card-2)] text-left ${isSel ? 'bg-[var(--card-2)]' : ''}`}
               >
-                <div className={`w-9 h-9 rounded-full ${colorFor(u.username)} flex items-center justify-center text-sm font-semibold shrink-0`}>
-                  {u.username.charAt(0).toUpperCase()}
-                </div>
+                <Avatar name={u.username} src={u.avatarUrl} size={36} ring="var(--card)" />
                 <span className="flex-1 text-sm font-medium">{u.username}</span>
                 {multi && isSel && <span className="w-5 h-5 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center">✓</span>}
               </button>

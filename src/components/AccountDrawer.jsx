@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../theme";
 import { logout } from "../auth";
+import Avatar from "./Avatar";
 
 const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
 
@@ -13,22 +14,29 @@ export default function AccountDrawer() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [, bump] = useState(0); // re-read profile when the photo/name changes
 
   // Opened by the gear buttons in each page header (see AccountGear)
   useEffect(() => {
     const h = () => setOpen(true);
+    const refresh = () => bump((n) => n + 1);
     window.addEventListener("mindspace:open-account", h);
-    return () => window.removeEventListener("mindspace:open-account", h);
+    window.addEventListener("mindspace:profile-updated", refresh);
+    return () => {
+      window.removeEventListener("mindspace:open-account", h);
+      window.removeEventListener("mindspace:profile-updated", refresh);
+    };
   }, []);
 
   let name = "there";
   let email = "";
+  let avatarUrl = "";
   try {
     const u = JSON.parse(localStorage.getItem("mindspace_user") || "{}");
     if (u.name) name = u.name;
     if (u.email) email = u.email;
+    if (u.avatarUrl) avatarUrl = u.avatarUrl;
   } catch (e) {}
-  const initial = name.charAt(0).toUpperCase();
 
   // Quick stats from saved entries
   let entries = [];
@@ -101,9 +109,8 @@ export default function AccountDrawer() {
 
         {/* Profile */}
         <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px", borderRadius: "14px", background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "#534AB7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 700, color: "#fff", flexShrink: 0 }}>
-            {initial}
-          </div>
+          <Avatar name={name} src={avatarUrl} size={48} ring="var(--elevated)" />
+
           <div style={{ overflow: "hidden" }}>
             <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</p>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{email || "No email on file"}</p>
