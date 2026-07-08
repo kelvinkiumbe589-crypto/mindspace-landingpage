@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, BookOpen, BarChart3, MessageCircle, Stethoscope, DoorOpen, Menu, Coffee, Star, X } from "lucide-react";
+import { Home, BookOpen, BarChart3, MessageCircle, MessagesSquare, Stethoscope, DoorOpen, Menu, Coffee, Star, X } from "lucide-react";
 import { logout } from "../auth";
 import AccountDrawer from "./AccountDrawer";
 import SupportChat from "./SupportChat";
@@ -15,6 +15,7 @@ const NAV = [
   { label: "Mood Journal", icon: BookOpen, path: "/mood-journal" },
   { label: "Mood Trends", icon: BarChart3, path: "/mood-trends" },
   { label: "Community Forum", icon: MessageCircle, path: "/community-forum" },
+  { label: "Messages", icon: MessagesSquare, path: "/messages" },
   { label: "Find a Therapist", icon: Stethoscope, path: "/find-a-therapist" },
 ];
 

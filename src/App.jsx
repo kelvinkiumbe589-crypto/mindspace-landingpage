@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import MoodJournal from "./pages/MoodJournal";
 import MoodTrends from "./pages/MoodTrends";
 import CommunityForum from "./pages/CommunityForum";
+import Messages from "./pages/Messages";
 import FindATherapist from "./pages/FindATherapist";
 import Settings from "./pages/Settings";
 import Booking from "./pages/Booking";
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/mood-journal" element={<RequireAuth><MoodJournal /></RequireAuth>} />
         <Route path="/mood-trends" element={<RequireAuth><MoodTrends /></RequireAuth>} />
         <Route path="/community-forum" element={<RequireAuth><CommunityForum /></RequireAuth>} />
+        <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
         <Route path="/find-a-therapist" element={<RequireAuth><FindATherapist /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/booking" element={<RequireAuth><Booking /></RequireAuth>} />
