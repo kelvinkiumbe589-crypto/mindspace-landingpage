@@ -107,6 +107,29 @@ export default function Booking() {
     } catch (e) {}
   };
 
+  // The backend can be asleep (free tier) and take a while to wake — retry a few
+  // times on network errors / gateway errors instead of failing immediately.
+  const fetchRetry = async (url, opts, retries = 3) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await fetch(url, opts);
+        if ([502, 503, 504].includes(res.status) && attempt < retries) {
+          setStatusMsg("Waking up the server… one moment");
+          await sleep(5000);
+          continue;
+        }
+        return res;
+      } catch (e) {
+        if (attempt < retries) {
+          setStatusMsg("Waking up the server… one moment");
+          await sleep(5000);
+          continue;
+        }
+        throw e;
+      }
+    }
+  };
+
   const handlePay = async () => {
     if (!canPay || status === "creating") return;
     if (!token()) { setError("Please sign in again to book a session."); return; }
@@ -115,7 +138,7 @@ export default function Booking() {
     setStatusMsg("Reserving your session…");
     try {
       // 1. Create the booking (amount is computed server-side)
-      const bres = await fetch(`${API_BASE}/api/bookings`, {
+      const bres = await fetchRetry(`${API_BASE}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ therapistId: therapist.userId, sessionType: sessionType.toUpperCase(), scheduledAt }),
@@ -131,7 +154,7 @@ export default function Booking() {
       // 2. Start Pesapal checkout
       setStatusMsg("Starting secure Pesapal checkout…");
       const parts = fullName.trim().split(/\s+/);
-      const ores = await fetch(`${API_BASE}/api/payments/pesapal/order`, {
+      const ores = await fetchRetry(`${API_BASE}/api/payments/pesapal/order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -166,7 +189,7 @@ export default function Booking() {
       }
     } catch (e) {
       setStatus("idle"); setStatusMsg("");
-      setError("Could not reach the server. Make sure the backend is running on port 8080.");
+      setError("We couldn't reach the server just now — it may have been waking up. Please try again in a moment.");
     }
   };
 

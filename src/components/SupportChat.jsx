@@ -105,7 +105,7 @@ export default function SupportChat() {
       if (res.ok) await load();
       else throw new Error("failed");
     } catch (e) {
-      setError("Couldn't send — is the server running on port 8080?");
+      setError("Couldn't send — please check your connection and try again.");
     } finally {
       setSending(false);
     }

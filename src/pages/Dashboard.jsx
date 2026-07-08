@@ -296,7 +296,7 @@ export default function Dashboard() {
     } catch (err) {
       setChatMessages((prev) => [
         ...prev,
-        { role: "ai", text: "I can't reach the assistant right now. Make sure the MindSpace server is running on port 8080, then try again." },
+        { role: "ai", text: "I can't reach the assistant right now. Please try again in a moment." },
       ]);
     } finally {
       setChatLoading(false);
@@ -418,7 +418,7 @@ export default function Dashboard() {
 
             {insight === "__offline__" ? (
               <p style={{ fontSize: "13px", color: "#e07a52", lineHeight: 1.6, marginBottom: "16px" }}>
-                Couldn't reach the AI service. Start the MindSpace server on port 8080 and try again.
+                Couldn't reach the AI service. Please try again in a moment.
               </p>
             ) : insight ? (
               <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "16px" }}>{insight}</p>

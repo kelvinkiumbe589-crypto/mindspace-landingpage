@@ -88,7 +88,7 @@ export default function SignUp() {
         setServerError(msg || "Registration failed. Please try again.");
       }
     } catch (err) {
-      setServerError("Could not connect to server. Make sure the backend is running on port 8080.");
+      setServerError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ export default function SignUp() {
         setServerError(data.error || "Verification failed. Please try again.");
       }
     } catch (err) {
-      setServerError("Could not connect to server. Make sure the backend is running on port 8080.");
+      setServerError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }

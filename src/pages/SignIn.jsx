@@ -57,7 +57,7 @@ export default function SignIn() {
         setError(msg || "Sign in failed. Please check your credentials.");
       }
     } catch (err) {
-      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+      setError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ export default function SignIn() {
         setError(data.error || "Verification failed. Please try again.");
       }
     } catch (err) {
-      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+      setError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -137,7 +137,7 @@ export default function SignIn() {
         setError(data.error || "Could not send a reset code.");
       }
     } catch (err) {
-      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+      setError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -172,7 +172,7 @@ export default function SignIn() {
         setError(data.error || "Could not reset your password.");
       }
     } catch (err) {
-      setError("Could not connect to the server. Make sure the backend is running on port 8080.");
+      setError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }

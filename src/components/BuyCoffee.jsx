@@ -78,7 +78,7 @@ export default function BuyCoffee() {
         setError(result === "timeout" ? "We couldn't confirm it yet — if you paid, thank you! It'll reflect shortly." : "Payment wasn't completed.");
       }
     } catch (e) {
-      setError("Could not reach the server on port 8080."); setLoading(false);
+      setError("Could not reach the server. Please try again in a moment."); setLoading(false);
     }
   };
 
