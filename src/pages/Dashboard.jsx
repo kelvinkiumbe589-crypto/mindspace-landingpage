@@ -95,6 +95,19 @@ export default function Dashboard() {
 
     loadEntries();
     loadPosts();
+
+    // If they arrived via an invite link, credit the referrer (once).
+    try {
+      const ref = localStorage.getItem("mindspace_ref");
+      const tk = localStorage.getItem("mindspace_token");
+      if (ref && tk) {
+        fetch(`${API_BASE}/api/referrals/attribute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+          body: JSON.stringify({ code: ref }),
+        }).catch(() => {}).finally(() => localStorage.removeItem("mindspace_ref"));
+      }
+    } catch (e) {}
   }, []);
 
   const loadEntries = async () => {

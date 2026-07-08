@@ -1,10 +1,17 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
 
 export default function SignUp() {
   const navigate = useNavigate();
+
+  // Remember an invite code from the link (?ref=CODE) so we can credit the
+  // referrer once this account is created.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) { try { localStorage.setItem("mindspace_ref", ref); } catch (e) {} }
+  }, []);
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);

@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
 import { useIsMobile } from "../useIsMobile";
 import { enablePush, pushSupported } from "../push";
+import { loadMoods } from "../moods";
 
 const PREFS_KEY = "mindspace_prefs";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -40,6 +41,45 @@ export default function Settings() {
     };
     setPushMsg(map[r] || "Something went wrong.");
     setPushBusy(false);
+  };
+
+  // ── Referrals / AI deep-dive credits ──
+  const [ref, setRef] = useState(null); // { code, link, invited, aiCredits }
+  const [refCopied, setRefCopied] = useState(false);
+  const [deep, setDeep] = useState("");
+  const [deepBusy, setDeepBusy] = useState(false);
+
+  useEffect(() => {
+    if (!token()) return;
+    fetch(`${API_BASE}/api/referrals/me`, { headers: { Authorization: `Bearer ${token()}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setRef(d))
+      .catch(() => {});
+  }, []);
+
+  const copyInvite = () => {
+    if (!ref?.link) return;
+    try { navigator.clipboard.writeText(ref.link); setRefCopied(true); setTimeout(() => setRefCopied(false), 2000); } catch (e) {}
+  };
+
+  const runDeepDive = async () => {
+    if (deepBusy || !token()) return;
+    setDeepBusy(true); setDeep("");
+    try {
+      const entries = await loadMoods();
+      const moodContext = entries.slice(0, 14)
+        .map((e) => `${e.date}: mood ${e.moodScore}/10, emotions: ${(e.tags || []).join(", ") || "none"}${e.text ? ` — "${e.text}"` : ""}`)
+        .join("\n");
+      const r = await fetch(`${API_BASE}/api/ai/deep-dive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ moodContext }),
+      });
+      const d = await r.json();
+      if (d.outOfCredits) setDeep("You're out of AI deep-dive credits — invite a friend to earn more! 💜");
+      else { setDeep(d.reply || "Couldn't generate a deep-dive right now."); setRef((p) => (p ? { ...p, aiCredits: d.creditsLeft } : p)); }
+    } catch (e) { setDeep("Couldn't reach the AI. Please try again."); }
+    finally { setDeepBusy(false); }
   };
 
   const [tgMsg, setTgMsg] = useState("");
@@ -295,6 +335,36 @@ export default function Settings() {
               <Toggle on={prefs[item.key]} onClick={() => togglePref(item.key)} />
             </div>
           ))}
+        </div>
+
+        {/* Invite friends */}
+        <div style={card}>
+          <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "6px", color: "var(--text-strong)" }}>Invite friends 💜</h2>
+          <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0, marginBottom: "14px" }}>
+            Share your link. When a friend joins, you both earn <b style={{ color: "var(--text-soft)" }}>AI Deep-Dive credits</b> — a richer, personalised analysis of your moods.
+          </p>
+          {ref ? (
+            <>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                <input readOnly value={ref.link} onFocus={(e) => e.target.select()}
+                  style={{ flex: 1, padding: "11px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-2)", color: "var(--text)", fontSize: "12px", outline: "none" }} />
+                <button onClick={copyInvite} style={{ padding: "11px 18px", borderRadius: "12px", border: "none", background: refCopied ? "#1D9E75" : "#534AB7", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  {refCopied ? "✓ Copied" : "Copy"}
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: "20px", marginBottom: "14px" }}>
+                <div><div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-strong)" }}>{ref.invited}</div><div style={{ fontSize: "11px", color: "var(--text-dim)" }}>friends joined</div></div>
+                <div><div style={{ fontSize: "22px", fontWeight: 700, color: "#a89cf5" }}>{ref.aiCredits}</div><div style={{ fontSize: "11px", color: "var(--text-dim)" }}>AI deep-dive credits</div></div>
+              </div>
+              <button onClick={runDeepDive} disabled={deepBusy}
+                style={{ padding: "10px 16px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-2)", color: "var(--text-soft)", fontSize: "13px", fontWeight: 600, cursor: deepBusy ? "wait" : "pointer" }}>
+                {deepBusy ? "Analysing…" : "✨ AI Deep-Dive (uses 1 credit)"}
+              </button>
+              {deep && <p style={{ fontSize: "13px", color: "var(--text-soft)", lineHeight: 1.6, marginTop: "12px", whiteSpace: "pre-wrap", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>{deep}</p>}
+            </>
+          ) : (
+            <p style={{ fontSize: "13px", color: "var(--text-dim)" }}>Sign in to get your invite link.</p>
+          )}
         </div>
 
         {/* Data */}
