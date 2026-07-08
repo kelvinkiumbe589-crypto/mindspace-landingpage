@@ -62,6 +62,7 @@ function mapReply(r) {
     avatar: author === 'Anonymous' ? '?' : author.charAt(0).toUpperCase(),
     text: r.content,
     time: timeAgo(r.createdAt),
+    mine: !!r.mine,
   };
 }
 
@@ -184,17 +185,58 @@ export default function CommunityForum() {
     }
   };
 
-  const toggleComments = async (id) => {
-    const willOpen = !openComments[id];
-    setOpenComments((prev) => ({ ...prev, [id]: willOpen }));
-    if (!willOpen) return;
-    // Load the thread's replies from the server when it's opened.
+  // Load a thread's replies. Sends the token so the server can flag which
+  // comments are mine (editable/deletable).
+  const loadComments = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/api/forum/posts/${id}`);
+      const t = token();
+      const res = await fetch(`${API_BASE}/api/forum/posts/${id}`, {
+        headers: t ? { Authorization: `Bearer ${t}` } : {},
+      });
       if (res.ok) {
         const detail = await res.json();
         const comments = (detail.replies || []).map(mapReply);
         setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, comments } : p)));
+      }
+    } catch (e) {}
+  };
+
+  const toggleComments = async (id) => {
+    const willOpen = !openComments[id];
+    setOpenComments((prev) => ({ ...prev, [id]: willOpen }));
+    if (willOpen) loadComments(id);
+  };
+
+  // ── Edit / delete my own comment ──
+  const [editingComment, setEditingComment] = useState(null); // reply id
+  const [editText, setEditText] = useState('');
+
+  const startEditComment = (c) => { setEditingComment(c.id); setEditText(c.text); };
+  const cancelEditComment = () => { setEditingComment(null); setEditText(''); };
+
+  const saveEditComment = async (postId, commentId) => {
+    const content = editText.trim();
+    if (!content) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/replies/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) { cancelEditComment(); loadComments(postId); }
+    } catch (e) {}
+  };
+
+  const deleteComment = async (postId, commentId) => {
+    if (!window.confirm('Delete this comment? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/replies/${commentId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (res.ok) {
+        loadComments(postId);
+        setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, replyCount: Math.max(0, (p.replyCount || 1) - 1) } : p)));
       }
     } catch (e) {}
   };
@@ -413,10 +455,32 @@ export default function CommunityForum() {
                             {c.avatar}
                           </div>
                           <div className="bg-[var(--card-2)] rounded-xl px-3 py-2 flex-1">
-                            <p className="text-xs text-[var(--text-muted)] mb-0.5">
-                              <span className="font-medium text-[var(--text-soft)]">{c.author}</span> · {c.time}
-                            </p>
-                            <p className="text-sm text-[var(--text-soft)]">{c.text}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs text-[var(--text-muted)] mb-0.5">
+                                <span className="font-medium text-[var(--text-soft)]">{c.author}</span> · {c.time}
+                              </p>
+                              {c.mine && editingComment !== c.id && (
+                                <span className="flex items-center gap-2 shrink-0">
+                                  <button onClick={() => startEditComment(c)} className="text-[11px] text-indigo-300 hover:text-indigo-200">Edit</button>
+                                  <button onClick={() => deleteComment(post.id, c.id)} className="text-[11px] text-rose-300 hover:text-rose-200">Delete</button>
+                                </span>
+                              )}
+                            </div>
+                            {editingComment === c.id ? (
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') saveEditComment(post.id, c.id); if (e.key === 'Escape') cancelEditComment(); }}
+                                  autoFocus
+                                  className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1 text-sm outline-none text-[var(--text)]"
+                                />
+                                <button onClick={() => saveEditComment(post.id, c.id)} className="text-[11px] font-semibold text-emerald-300">Save</button>
+                                <button onClick={cancelEditComment} className="text-[11px] text-[var(--text-dim)]">Cancel</button>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-[var(--text-soft)]">{c.text}</p>
+                            )}
                           </div>
                         </div>
                       ))}
