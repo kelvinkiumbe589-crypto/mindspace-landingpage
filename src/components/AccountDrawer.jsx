@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Settings as Gear, X, Sun, Moon, LogOut, ChevronRight,
   BookOpen, BarChart3, MessageCircle, HelpCircle, Flame, PenLine,
+  Camera, Trash2,
 } from "lucide-react";
 import { useTheme } from "../theme";
 import { logout } from "../auth";
 import Avatar from "./Avatar";
+import { getProfile, saveAvatar, removeAvatar, fileToAvatarDataUrl } from "../lib/avatar";
 
 const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
 
@@ -15,6 +17,9 @@ export default function AccountDrawer() {
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [, bump] = useState(0); // re-read profile when the photo/name changes
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoErr, setPhotoErr] = useState("");
+  const fileRef = useRef(null);
 
   // Opened by the gear buttons in each page header (see AccountGear)
   useEffect(() => {
@@ -55,6 +60,25 @@ export default function AccountDrawer() {
   })();
 
   const go = (path) => { setOpen(false); navigate(path); };
+
+  const pickPhoto = () => fileRef.current?.click();
+  const onPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setPhotoBusy(true); setPhotoErr("");
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      // Keep whatever visibility the user already chose (defaults to private).
+      await saveAvatar(dataUrl, getProfile().avatarVisibility || "private");
+    } catch (err) {
+      setPhotoErr(err.message || "Couldn't set that photo.");
+    } finally { setPhotoBusy(false); }
+  };
+  const onRemovePhoto = async () => {
+    setPhotoBusy(true); setPhotoErr("");
+    try { await removeAvatar(); } finally { setPhotoBusy(false); }
+  };
 
   const menu = [
     { label: "All settings", icon: Gear, action: () => go("/settings") },
@@ -109,14 +133,36 @@ export default function AccountDrawer() {
 
         {/* Profile */}
         <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "16px", borderRadius: "14px", background: "rgba(83,74,183,0.12)", border: "1px solid var(--border)" }}>
-          <Avatar name={name} src={avatarUrl} size={48} ring="var(--elevated)" />
+          {/* Tap the avatar to change your photo */}
+          <button
+            onClick={pickPhoto}
+            disabled={photoBusy}
+            title="Change photo"
+            style={{ position: "relative", background: "none", border: "none", padding: 0, cursor: photoBusy ? "wait" : "pointer", flexShrink: 0, opacity: photoBusy ? 0.6 : 1 }}
+          >
+            <Avatar name={name} src={avatarUrl} size={48} ring="var(--elevated)" />
+            <span style={{ position: "absolute", right: -3, bottom: -3, width: "20px", height: "20px", borderRadius: "50%", border: "2px solid var(--elevated)", background: "#534AB7", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Camera size={11} />
+            </span>
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPhoto} style={{ display: "none" }} />
 
           <div style={{ overflow: "hidden" }}>
             <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-strong)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</p>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{email || "No email on file"}</p>
-            <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--accent-soft)", background: "rgba(83,74,183,0.2)", padding: "2px 8px", borderRadius: "10px", display: "inline-block", marginTop: "6px" }}>Member</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "6px" }}>
+              <button onClick={pickPhoto} disabled={photoBusy} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "11px", fontWeight: 600, color: "var(--accent-soft)" }}>
+                {photoBusy ? "Saving…" : avatarUrl ? "Change photo" : "Add photo"}
+              </button>
+              {avatarUrl && !photoBusy && (
+                <button onClick={onRemovePhoto} style={{ display: "flex", alignItems: "center", gap: "3px", background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: "11px", color: "var(--text-dim)" }}>
+                  <Trash2 size={11} /> Remove
+                </button>
+              )}
+            </div>
           </div>
         </div>
+        {photoErr && <p style={{ fontSize: "12px", color: "#f0a07a", margin: "-8px 0 0" }}>{photoErr}</p>}
 
         {/* Quick stats */}
         <div style={{ display: "flex", gap: "10px" }}>
