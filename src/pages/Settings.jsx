@@ -5,6 +5,7 @@ import { useTheme } from "../theme";
 import Sidebar from "../components/Sidebar";
 import { AccountGear } from "../components/AccountDrawer";
 import { useIsMobile } from "../useIsMobile";
+import { enablePush, pushSupported } from "../push";
 
 const PREFS_KEY = "mindspace_prefs";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
@@ -24,6 +25,22 @@ export default function Settings() {
     anonymousMode: true,
   });
   const [confirmClear, setConfirmClear] = useState(false);
+  const [pushMsg, setPushMsg] = useState("");
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const turnOnPush = async () => {
+    setPushBusy(true); setPushMsg("");
+    const r = await enablePush();
+    const map = {
+      subscribed: "✓ Notifications are on for this device.",
+      denied: "You blocked notifications — enable them in your browser settings, then try again.",
+      unsupported: "This browser doesn't support notifications. On iPhone, add MindSpace to your home screen first.",
+      unavailable: "Notifications aren't switched on by the server yet.",
+      error: "Couldn't enable notifications. Please make sure you're signed in and try again.",
+    };
+    setPushMsg(map[r] || "Something went wrong.");
+    setPushBusy(false);
+  };
 
   const sidebarItems = [
     { icon: "\u{1F3E0}", label: "Dashboard", path: "/dashboard" },
@@ -215,6 +232,22 @@ export default function Settings() {
         <div style={card}>
           <h2 style={{ fontSize: "16px", fontWeight: 600, margin: 0, marginBottom: "6px", color: "var(--text-strong)" }}>Notifications & privacy</h2>
           <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Control reminders and how you appear to others.</p>
+
+          {/* Push notifications on this device */}
+          <div style={{ ...rowStyle, borderTop: "none", paddingTop: "12px" }}>
+            <div>
+              <p style={{ fontSize: "14px", color: "var(--text-soft)", margin: 0 }}>Push notifications</p>
+              <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Get alerts on this device (replies, reminders) even when the app is closed</p>
+              {pushMsg && <p style={{ fontSize: "12px", color: pushMsg.startsWith("✓") ? "#7ee0bc" : "#f0a07a", margin: "6px 0 0" }}>{pushMsg}</p>}
+            </div>
+            <button
+              onClick={turnOnPush}
+              disabled={pushBusy || !pushSupported()}
+              style={{ padding: "9px 16px", borderRadius: "10px", border: "none", background: "#534AB7", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: pushBusy || !pushSupported() ? "not-allowed" : "pointer", whiteSpace: "nowrap", opacity: pushSupported() ? 1 : 0.5 }}
+            >
+              {pushBusy ? "Enabling…" : "Enable"}
+            </button>
+          </div>
           {[
             { key: "dailyReminder", title: "Daily mood reminder", desc: "A gentle nudge to check in each day" },
             { key: "weeklyInsight", title: "Weekly insight summary", desc: "Get your mood recap every week" },
