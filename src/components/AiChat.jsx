@@ -23,6 +23,7 @@ export default function AiChat() {
   const send = async () => {
     const text = input.trim();
     if (!text || loading) return;
+    const history = messages.slice(-8);
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
     setLoading(true);
@@ -33,6 +34,7 @@ export default function AiChat() {
         body: JSON.stringify({
           moodContext: "The user is chatting with the MindSpace wellness assistant.",
           question: text,
+          history: history.map((m) => ({ role: m.role, text: m.text })),
         }),
       });
       if (!res.ok) throw new Error("bad");

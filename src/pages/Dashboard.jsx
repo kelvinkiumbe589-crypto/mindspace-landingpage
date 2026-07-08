@@ -262,11 +262,15 @@ export default function Dashboard() {
       .join("\n");
   };
 
-  const askAI = async (question) => {
+  const askAI = async (question, history = []) => {
     const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ moodContext: buildMoodContext(), question }),
+      body: JSON.stringify({
+        moodContext: buildMoodContext(),
+        question,
+        history: history.slice(-8).map((m) => ({ role: m.role, text: m.text })),
+      }),
     });
     if (!res.ok) throw new Error("AI request failed");
     const data = await res.json();
@@ -288,11 +292,12 @@ export default function Dashboard() {
   const sendChat = async () => {
     const q = chatInput.trim();
     if (!q || chatLoading) return;
+    const history = chatMessages;                 // prior turns for context
     setChatMessages((prev) => [...prev, { role: "user", text: q }]);
     setChatInput("");
     setChatLoading(true);
     try {
-      const reply = await askAI(q);
+      const reply = await askAI(q, history);
       setChatMessages((prev) => [...prev, { role: "ai", text: reply }]);
     } catch (err) {
       setChatMessages((prev) => [
