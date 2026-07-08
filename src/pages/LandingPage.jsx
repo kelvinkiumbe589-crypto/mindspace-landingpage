@@ -1,5 +1,6 @@
 import MoodTicker from "../components/MoodTicker";
 import AddToHomeScreen from "../components/AddToHomeScreen";
+import { QRCodeSVG } from "qrcode.react";
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
@@ -64,6 +65,7 @@ function CountUp({ value, suffix = "", prefix = "" }) {
 export default function LandingPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const bookingUrl = (typeof window !== "undefined" ? window.location.origin : "") + "/find-a-therapist";
 
   // Support form state
   const [sName, setSName] = useState("");
@@ -486,6 +488,16 @@ export default function LandingPage() {
             background: "transparent", color: "#c4c1f0",
             fontSize: "15px", cursor: "pointer",
           }}>Browse therapists</button>
+        </div>
+
+        {/* Scan-to-book QR */}
+        <div style={{ marginTop: "44px", display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(127,119,221,0.2)", borderRadius: "18px", padding: "22px 26px" }}>
+          <div style={{ background: "#fff", padding: "12px", borderRadius: "12px", lineHeight: 0 }}>
+            <QRCodeSVG value={bookingUrl} size={132} level="M" />
+          </div>
+          <p style={{ fontSize: "13px", color: "#9d9bc4", margin: 0, maxWidth: "220px", textAlign: "center" }}>
+            📱 Scan to book a therapist on your phone
+          </p>
         </div>
       </section>
 

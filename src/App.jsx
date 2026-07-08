@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
@@ -16,6 +16,21 @@ import { isAuthenticated } from "./auth";
 // Gate app routes behind login. Logged-out users are sent to Sign In.
 function RequireAuth({ children }) {
   return isAuthenticated() ? children : <Navigate to="/signin" replace />;
+}
+
+// Receives shared text from the OS share sheet (PWA share target), stashes it,
+// and hands off to the Mood Journal which opens the composer prefilled.
+function ShareReceiver() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const text = [p.get("title"), p.get("text"), p.get("url")].filter(Boolean).join(" ").trim();
+    if (text) {
+      try { sessionStorage.setItem("mindspace_shared_text", text); } catch (e) {}
+    }
+    navigate("/mood-journal", { replace: true });
+  }, [navigate]);
+  return null;
 }
 
 // Reset scroll to the top whenever the route changes, so pages don't open
@@ -39,6 +54,7 @@ export default function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/privacy" element={<Legal kind="privacy" />} />
         <Route path="/terms" element={<Legal kind="terms" />} />
+        <Route path="/share" element={<ShareReceiver />} />
 
         {/* Protected */}
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />

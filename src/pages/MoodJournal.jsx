@@ -61,6 +61,17 @@ export default function MoodJournal() {
     }
     loadEntries();
 
+    // If the user shared text into MindSpace (from another app), open the
+    // composer with it prefilled.
+    try {
+      const shared = sessionStorage.getItem("mindspace_shared_text");
+      if (shared) {
+        setJournalText(shared);
+        setShowComposer(true);
+        sessionStorage.removeItem("mindspace_shared_text");
+      }
+    } catch (e) {}
+
     // Keep the list fresh with moods logged elsewhere (e.g. the Dashboard)
     const refresh = () => loadEntries();
     window.addEventListener("focus", refresh);
