@@ -2,7 +2,7 @@
 // Strategy: API calls always hit the network; page navigations are network-first
 // (falling back to the cached shell when offline); other same-origin static assets
 // are served cache-first. Kept deliberately simple to avoid serving stale builds.
-const CACHE = 'mindspace-shell-v3';
+const CACHE = 'mindspace-shell-v4';
 const SHELL = ['/', '/index.html', '/logo.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
