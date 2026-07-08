@@ -42,6 +42,24 @@ export default function Settings() {
     setPushBusy(false);
   };
 
+  const [tgMsg, setTgMsg] = useState("");
+  const connectTelegram = async () => {
+    if (!token()) { setTgMsg("Please sign in again."); return; }
+    setTgMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/telegram/link`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d.url && d.url.includes("t.me/?")) setTgMsg("Telegram bot isn't set up on the server yet.");
+      else if (d.url) window.open(d.url, "_blank", "noopener");
+      else setTgMsg("Couldn't start the Telegram connection.");
+    } catch (e) {
+      setTgMsg("Couldn't reach the server. Please try again.");
+    }
+  };
+
   const sidebarItems = [
     { icon: "\u{1F3E0}", label: "Dashboard", path: "/dashboard" },
     { icon: "\u{1F4D3}", label: "Mood Journal", path: "/mood-journal" },
@@ -246,6 +264,21 @@ export default function Settings() {
               style={{ padding: "9px 16px", borderRadius: "10px", border: "none", background: "#534AB7", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: pushBusy || !pushSupported() ? "not-allowed" : "pointer", whiteSpace: "nowrap", opacity: pushSupported() ? 1 : 0.5 }}
             >
               {pushBusy ? "Enabling…" : "Enable"}
+            </button>
+          </div>
+
+          {/* Connect Telegram */}
+          <div style={{ ...rowStyle }}>
+            <div>
+              <p style={{ fontSize: "14px", color: "var(--text-soft)", margin: 0 }}>Telegram bot</p>
+              <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0 }}>Log your mood by texting our bot — connect your account</p>
+              {tgMsg && <p style={{ fontSize: "12px", color: "#f0a07a", margin: "6px 0 0" }}>{tgMsg}</p>}
+            </div>
+            <button
+              onClick={connectTelegram}
+              style={{ padding: "9px 16px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-2)", color: "var(--text-soft)", fontSize: "13px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              Connect
             </button>
           </div>
           {[
