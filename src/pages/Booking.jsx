@@ -141,7 +141,7 @@ export default function Booking() {
       const bres = await fetchRetry(`${API_BASE}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ therapistId: therapist.userId, sessionType: sessionType.toUpperCase(), scheduledAt }),
+        body: JSON.stringify({ therapistId: therapist.userId, sessionType: sessionType.toUpperCase(), scheduledAt, phone }),
       });
       const booking = await bres.json();
       if (!bres.ok || !booking.id) {
