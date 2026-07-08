@@ -81,6 +81,7 @@ function mapPost(p, bookmarks) {
     tags: [],
     likes: p.likeCount || 0,
     liked: p.likedByMe || false,
+    mine: !!p.mine,
     bookmarked: bookmarks ? bookmarks.has(p.id) : false,
     replyCount: p.replyCount || 0,
     comments: null, // loaded lazily when the thread is opened
@@ -237,6 +238,48 @@ export default function CommunityForum() {
       if (res.ok) {
         loadComments(postId);
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, replyCount: Math.max(0, (p.replyCount || 1) - 1) } : p)));
+      }
+    } catch (e) {}
+  };
+
+  // ── Edit / delete your own post ────────────────────────────
+  const [editingPost, setEditingPost] = useState(null); // post id
+  const [editPostTitle, setEditPostTitle] = useState('');
+  const [editPostBody, setEditPostBody] = useState('');
+
+  const startEditPost = (post) => {
+    setEditingPost(post.id);
+    setEditPostTitle(post.title || '');
+    setEditPostBody(post.body || '');
+  };
+  const cancelEditPost = () => { setEditingPost(null); setEditPostTitle(''); setEditPostBody(''); };
+
+  const saveEditPost = async (postId) => {
+    const title = editPostTitle.trim();
+    const content = editPostBody.trim();
+    if (!title || !content) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts/${postId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ title, content }),
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, title, body: content } : p)));
+        cancelEditPost();
+      }
+    } catch (e) {}
+  };
+
+  const deletePost = async (postId) => {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
       }
     } catch (e) {}
   };
@@ -401,10 +444,41 @@ export default function CommunityForum() {
                         {post.time} · {post.category}
                       </p>
                     </div>
+                    {post.mine && editingPost !== post.id && (
+                      <span className="flex items-center gap-2 shrink-0 ml-auto">
+                        <button onClick={() => startEditPost(post)} className="text-[11px] text-indigo-300 hover:text-indigo-200">Edit</button>
+                        <button onClick={() => deletePost(post.id)} className="text-[11px] text-rose-300 hover:text-rose-200">Delete</button>
+                      </span>
+                    )}
                   </div>
-                  <h3 className="font-semibold mb-1.5">{post.title}</h3>
-                  {post.body && (
-                    <p className="text-sm text-[var(--text-muted)] mb-3 leading-relaxed">{post.body}</p>
+                  {editingPost === post.id ? (
+                    <div className="flex flex-col gap-2 mb-3">
+                      <input
+                        value={editPostTitle}
+                        onChange={(e) => setEditPostTitle(e.target.value)}
+                        placeholder="Title"
+                        autoFocus
+                        className="bg-[var(--card-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm font-semibold outline-none text-[var(--text)]"
+                      />
+                      <textarea
+                        value={editPostBody}
+                        onChange={(e) => setEditPostBody(e.target.value)}
+                        rows={4}
+                        placeholder="Share your thoughts..."
+                        className="bg-[var(--card-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm outline-none text-[var(--text)] resize-y"
+                      />
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => saveEditPost(post.id)} className="text-xs font-semibold text-emerald-300">Save</button>
+                        <button onClick={cancelEditPost} className="text-xs text-[var(--text-dim)]">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="font-semibold mb-1.5">{post.title}</h3>
+                      {post.body && (
+                        <p className="text-sm text-[var(--text-muted)] mb-3 leading-relaxed">{post.body}</p>
+                      )}
+                    </>
                   )}
                   {post.tags && post.tags.length > 0 && (
                     <div className="flex gap-2 mb-3 flex-wrap">
