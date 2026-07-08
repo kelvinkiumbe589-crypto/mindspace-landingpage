@@ -4,6 +4,7 @@ import { Sun, Moon } from "lucide-react";
 import { useTheme } from "../theme";
 import { useReveal } from "../useReveal";
 import Sidebar from "../components/Sidebar";
+import MicButton from "../components/MicButton";
 import { AccountGear } from "../components/AccountDrawer";
 import { loadMoods, saveMood, deleteMood } from "../moods";
 
@@ -208,7 +209,10 @@ export default function MoodJournal() {
                 ))}
               </div>
 
-              <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "10px" }}>What's on your mind? <span style={{ color: "#e07a52" }}>*</span></p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: "10px" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>What's on your mind? <span style={{ color: "#e07a52" }}>*</span></p>
+                <MicButton onText={(t) => setJournalText((prev) => (prev ? prev.trim() + " " : "") + t)} />
+              </div>
               <textarea
                 value={journalText}
                 onChange={e => setJournalText(e.target.value)}

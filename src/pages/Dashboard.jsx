@@ -7,6 +7,7 @@ import { useIsMobile } from "../useIsMobile";
 import { useReveal } from "../useReveal";
 import CountUp from "../CountUp";
 import Sidebar from "../components/Sidebar";
+import MicButton from "../components/MicButton";
 import { AccountGear } from "../components/AccountDrawer";
 import { loadMoods, saveMood, emojiForScore as emojiFor } from "../moods";
 
@@ -379,7 +380,10 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "10px" }}>What's on your mind? <span style={{ color: "#e07a52" }}>*</span></p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: "10px" }}>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>What's on your mind? <span style={{ color: "#e07a52" }}>*</span></p>
+              <MicButton onText={(t) => setNote((prev) => (prev ? prev.trim() + " " : "") + t)} />
+            </div>
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}

@@ -218,3 +218,7 @@ img, video, iframe, canvas { max-width: 100%; }
   .skeleton, .pop-in, .heart-pop, .pulse-dot, .draw-line, .grow-bar, .toast-in { animation: none; }
   .reveal.reveal-visible { opacity: 1; }
 }
+
+/* Voice recording button pulse */
+@keyframes micPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,0.5); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
+.mic-pulse { animation: micPulse 1.2s ease-in-out infinite; }
