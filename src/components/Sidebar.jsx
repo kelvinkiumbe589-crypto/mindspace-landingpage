@@ -5,6 +5,7 @@ import { logout } from "../auth";
 import AccountDrawer from "./AccountDrawer";
 import SupportChat from "./SupportChat";
 import AiChat from "./AiChat";
+import AddToHomeScreen from "./AddToHomeScreen";
 import BuyCoffee from "./BuyCoffee";
 import RatingModal from "./RatingModal";
 import { useIsMobile } from "../useIsMobile";
@@ -182,6 +183,7 @@ export default function Sidebar() {
       <AccountDrawer />
       <SupportChat />
       <AiChat />
+      <AddToHomeScreen />
       <BuyCoffee />
       <RatingModal />
     </>

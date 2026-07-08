@@ -1,4 +1,5 @@
 import MoodTicker from "../components/MoodTicker";
+import AddToHomeScreen from "../components/AddToHomeScreen";
 
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
@@ -606,6 +607,7 @@ export default function LandingPage() {
       </footer>
 
       </div>{/* end content wrapper */}
+      <AddToHomeScreen />
     </div>
   );
 }
