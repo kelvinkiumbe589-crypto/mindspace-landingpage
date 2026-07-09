@@ -14,6 +14,7 @@ import Booking from "./pages/Booking";
 import Legal from "./pages/Legal";
 import { isAuthenticated } from "./auth";
 import { trackPageView } from "./lib/analytics";
+import { CallProvider } from "./lib/call";
 
 // Gate app routes behind login. Logged-out users are sent to Sign In.
 function RequireAuth({ children }) {
@@ -59,6 +60,7 @@ export default function App() {
     <BrowserRouter>
       <ScrollToTop />
       <PageViewTracker />
+      <CallProvider>
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
@@ -78,6 +80,7 @@ export default function App() {
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/booking" element={<RequireAuth><Booking /></RequireAuth>} />
       </Routes>
+      </CallProvider>
     </BrowserRouter>
   );
 }

@@ -16,6 +16,7 @@ export default function SessionRoom({ bookingId, onClose }) {
   const [name, setName] = useState("");
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [remaining, setRemaining] = useState(null); // seconds of paid call time left
 
   const pcRef = useRef(null);
   const wsRef = useRef(null);
@@ -51,6 +52,14 @@ export default function SessionRoom({ bookingId, onClose }) {
       }
       if (cancelled) return;
       setName(cfg.counterpartyName || "");
+
+      // 1b) Seed the remaining paid call time (the countdown).
+      try {
+        const sr = await fetch(`${API_BASE}/api/sessions/${bookingId}/call/state`, {
+          headers: { Authorization: `Bearer ${token()}` },
+        });
+        if (sr.ok) { const sd = await sr.json(); if (typeof sd.remainingSeconds === "number") setRemaining(sd.remainingSeconds); }
+      } catch (e) {}
 
       // 2) Local media
       let stream;
@@ -107,6 +116,10 @@ export default function SessionRoom({ bookingId, onClose }) {
           } else if (msg.type === "peer-left") {
             setStatus("waiting");
             if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+          } else if (msg.type === "time-up") {
+            setRemaining(0);
+            setError("The paid call time for this session is up.");
+            setStatus("ended");
           } else if (msg.type === "full") {
             setError("This room already has two people."); setStatus("error");
           } else if (msg.type === "error") {
@@ -120,6 +133,23 @@ export default function SessionRoom({ bookingId, onClose }) {
 
     return () => { cancelled = true; cleanup(); };
   }, [bookingId]);
+
+  // Count the budget down only while actually connected (connected-time billing).
+  useEffect(() => {
+    if (status !== "connected" || remaining == null) return;
+    const id = setInterval(() => {
+      setRemaining((r) => (r == null ? r : Math.max(0, r - 1)));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [status, remaining == null]);
+
+  // Budget hit zero mid-call — end it (the server force-closes too, this is the mirror).
+  useEffect(() => {
+    if (remaining === 0 && (status === "connected" || status === "waiting")) {
+      setError("The paid call time for this session is up.");
+      setStatus("ended");
+    }
+  }, [remaining, status]);
 
   const toggleMic = () => {
     const s = localStreamRef.current;
@@ -141,9 +171,15 @@ export default function SessionRoom({ bookingId, onClose }) {
     connecting: "Connecting…",
     waiting: `Waiting for ${name || "the other person"} to join…`,
     connected: name || "Connected",
-    ended: "Call ended",
+    ended: error || "Call ended",
     error: error || "Something went wrong",
   }[status];
+
+  const fmtClock = (s) => {
+    if (s == null) return "";
+    const m = Math.floor(s / 60), sec = s % 60;
+    return `${m}:${String(sec).padStart(2, "0")}`;
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0a0a10", zIndex: 400, display: "flex", flexDirection: "column" }}>
@@ -155,7 +191,7 @@ export default function SessionRoom({ bookingId, onClose }) {
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "10px", color: "#c4c1f0", textAlign: "center", padding: "24px" }}>
             <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "rgba(83,74,183,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px" }}>🎥</div>
             <p style={{ fontSize: "15px", margin: 0 }}>{statusText}</p>
-            {status === "error" && (
+            {(status === "error" || status === "ended") && (
               <button onClick={hangUp} style={{ marginTop: "10px", padding: "10px 20px", borderRadius: "10px", border: "1px solid rgba(127,119,221,0.3)", background: "transparent", color: "#c4c1f0", cursor: "pointer" }}>Close</button>
             )}
           </div>
@@ -169,6 +205,12 @@ export default function SessionRoom({ bookingId, onClose }) {
         <div style={{ position: "absolute", top: "16px", left: "16px", padding: "8px 14px", borderRadius: "999px", background: "rgba(0,0,0,0.45)", color: "#fff", fontSize: "13px", fontWeight: 600, backdropFilter: "blur(8px)" }}>
           {name ? `Session with ${name}` : "Online session"}
         </div>
+        {remaining != null && (
+          <div title="Paid call time remaining"
+            style={{ position: "absolute", top: "16px", right: "16px", padding: "8px 14px", borderRadius: "999px", background: remaining <= 60 ? "rgba(229,72,77,0.85)" : "rgba(0,0,0,0.45)", color: "#fff", fontSize: "13px", fontWeight: 700, backdropFilter: "blur(8px)", fontVariantNumeric: "tabular-nums" }}>
+            ⏳ {fmtClock(remaining)}
+          </div>
+        )}
       </div>
 
       {/* Controls */}

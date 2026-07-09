@@ -46,6 +46,7 @@ export default function Booking() {
   const [phone, setPhone] = useState("+254 ");
   const [fullName, setFullName] = useState(storedUser.name || "");
   const [sessionType, setSessionType] = useState("online");
+  const [durationMinutes, setDurationMinutes] = useState(60); // online call length paid for
   const [payMethod, setPayMethod] = useState("mpesa"); // mpesa | card | bank
   const [sessionDate, setSessionDate] = useState("");
   const [sessionTime, setSessionTime] = useState("");
@@ -72,8 +73,9 @@ export default function Booking() {
     );
   }
 
-  const onlineAmount = Number(therapist.priceOnline) || 2000;
-  const physicalAmount = Number(therapist.pricePhysical) || Math.round(onlineAmount * 1.5);
+  const onlineRate = Number(therapist.priceOnline) || 2000; // per hour
+  const onlineAmount = Math.round(onlineRate * (durationMinutes / 60));
+  const physicalAmount = Number(therapist.pricePhysical) || Math.round(onlineRate * 1.5);
   const amountKes = sessionType === "physical" ? physicalAmount : onlineAmount;
   const sessionLabel = sessionType === "physical" ? "In-person" : "Online";
   const payLabel = payMethod === "card" ? "Card" : payMethod === "bank" ? "Bank" : "M-Pesa";
@@ -141,7 +143,7 @@ export default function Booking() {
       const bres = await fetchRetry(`${API_BASE}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ therapistId: therapist.userId, sessionType: sessionType.toUpperCase(), scheduledAt, phone }),
+        body: JSON.stringify({ therapistId: therapist.userId, sessionType: sessionType.toUpperCase(), scheduledAt, phone, durationMinutes: sessionType === "online" ? durationMinutes : undefined }),
       });
       const booking = await bres.json();
       if (!bres.ok || !booking.id) {
@@ -282,15 +284,40 @@ export default function Booking() {
           <div style={{ display: "flex", gap: "10px", marginBottom: "22px" }}>
             <button onClick={() => setSessionType("online")} style={sessionCard(sessionType === "online")}>
               <Video size={20} /><span style={{ fontWeight: 600 }}>Online</span>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {onlineAmount.toLocaleString()}/hr</span>
-              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Video call · 1 hour</span>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {onlineRate.toLocaleString()}/hr</span>
+              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Video call · you pick the length</span>
             </button>
             <button onClick={() => setSessionType("physical")} style={sessionCard(sessionType === "physical")}>
               <MapPin size={20} /><span style={{ fontWeight: 600 }}>In-person</span>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {physicalAmount.toLocaleString()}/hr</span>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-strong)" }}>KES {physicalAmount.toLocaleString()}</span>
               <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>At the clinic · 1 hour</span>
             </button>
           </div>
+
+          {/* Call length (online only) — drives the price. */}
+          {sessionType === "online" && (
+            <>
+              <h2 style={sectionH}>How long do you want the call?</h2>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "8px", flexWrap: "wrap" }}>
+                {[{ m: 30, l: "30 min" }, { m: 60, l: "1 hour" }, { m: 90, l: "1h 30m" }, { m: 120, l: "2 hours" }].map(({ m, l }) => {
+                  const on = durationMinutes === m;
+                  return (
+                    <button key={m} onClick={() => setDurationMinutes(m)} style={{
+                      flex: "1 0 auto", minWidth: "84px", padding: "12px 10px", borderRadius: "12px", cursor: "pointer",
+                      background: on ? "rgba(83,74,183,0.15)" : "var(--card-2)", border: on ? "2px solid #534AB7" : "1px solid var(--border)",
+                      color: on ? "var(--accent-soft)" : "var(--text-muted)", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px",
+                    }}>
+                      <span style={{ fontSize: "13px", fontWeight: 700 }}>{l}</span>
+                      <span style={{ fontSize: "11px", opacity: 0.8 }}>KES {Math.round(onlineRate * (m / 60)).toLocaleString()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: "11px", color: "var(--text-dim)", margin: "0 0 22px" }}>
+                You can hang up and rejoin as many times as you like — you're only billed for time actually on the call, up to {durationMinutes >= 60 ? `${Math.floor(durationMinutes / 60)}h${durationMinutes % 60 ? " 30m" : ""}` : `${durationMinutes} min`}.
+              </p>
+            </>
+          )}
 
           {/* Date */}
           <h2 style={sectionH}>Pick a day</h2>

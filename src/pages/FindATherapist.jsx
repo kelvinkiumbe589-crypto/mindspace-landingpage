@@ -21,8 +21,8 @@ import { useTheme } from '../theme';
 import { useReveal } from '../useReveal';
 import Sidebar from '../components/Sidebar';
 import SessionChat from '../components/SessionChat';
-import SessionRoom from '../components/SessionRoom';
 import { AccountGear } from '../components/AccountDrawer';
+import { useCall } from '../lib/call';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
 import { API_BASE } from '../lib/api';
@@ -42,6 +42,7 @@ export default function FindATherapist() {
   const [therapists, setTherapists] = useState([]);
   const [loadingT, setLoadingT] = useState(true);
   const [bookings, setBookings] = useState([]);
+  const { startCall, rejoin } = useCall();
 
   const token = () => localStorage.getItem('mindspace_token');
 
@@ -79,7 +80,6 @@ export default function FindATherapist() {
   });
 
   // Booking groups (server statuses)
-  const [activeRoom, setActiveRoom] = useState(null);
   const incomplete = bookings.filter((b) => b.status === 'PENDING_PAYMENT' || b.status === 'FAILED');
   const awaiting = bookings.filter((b) => b.status === 'AWAITING_APPROVAL');
   const upcoming = bookings.filter((b) => b.status === 'APPROVED');
@@ -109,10 +109,15 @@ export default function FindATherapist() {
   };
   const fmtSched = (iso) => { if (!iso) return 'Time TBD'; try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
   const label = (b) => `${b.sessionType === 'PHYSICAL' ? 'In-person' : 'Online'} · KES ${Number(b.amount).toLocaleString()}`;
+  // Compact "time left" from the paid call budget, e.g. "1h 30m", "45m".
+  const mmLeft = (secs) => {
+    const m = Math.max(0, Math.round(Number(secs || 0) / 60));
+    if (m >= 60) { const h = Math.floor(m / 60), r = m % 60; return r ? `${h}h ${r}m` : `${h}h`; }
+    return `${m}m`;
+  };
 
   return (
     <div className="flex bg-[var(--bg)] min-h-screen text-[var(--text)] font-sans">
-      {activeRoom && <SessionRoom bookingId={activeRoom} onClose={() => setActiveRoom(null)} />}
       <Sidebar />
 
       <main className="flex-1 px-8 py-6 h-screen flex flex-col overflow-hidden">
@@ -292,9 +297,19 @@ export default function FindATherapist() {
                             <div className="min-w-0"><p className="text-xs font-semibold truncate">{b.therapistName}</p><p className="text-[11px] text-[var(--text-dim)]">{label(b)} · {fmtSched(b.scheduledAt)}</p></div>
                             <div className="shrink-0 flex items-center gap-2">
                               {b.sessionType === 'ONLINE' && (
-                                <button onClick={() => setActiveRoom(b.id)} className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Join video call">
-                                  <Video size={12} /> Join call
-                                </button>
+                                (b.remainingSeconds <= 0 || b.callState === 'ENDED') ? (
+                                  <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-zinc-500/15 text-zinc-400" title="The paid call time for this session is used up">
+                                    <Clock size={12} /> Time used up
+                                  </span>
+                                ) : b.callState === 'LIVE' ? (
+                                  <button onClick={() => rejoin(b.id)} className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Rejoin the call in progress">
+                                    <Video size={12} /> Rejoin · {mmLeft(b.remainingSeconds)}
+                                  </button>
+                                ) : (
+                                  <button onClick={() => startCall(b.id)} className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Call your therapist">
+                                    <Video size={12} /> Call · {mmLeft(b.remainingSeconds)}
+                                  </button>
+                                )
                               )}
                               {b.sessionType === 'PHYSICAL' && b.practiceMapUrl && (
                                 <a href={b.practiceMapUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors" title="Open location in Google Maps">
