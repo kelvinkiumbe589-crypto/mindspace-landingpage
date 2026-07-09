@@ -27,6 +27,7 @@ export default function Settings() {
     communityReplies: false,
     anonymousMode: true,
     showActivity: true,
+    productTips: true,
   });
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarVisibility, setAvatarVisibilityState] = useState("private");
@@ -146,6 +147,17 @@ export default function Settings() {
           }
         })
         .catch(() => {});
+      // Marketing/tips emails are a separate server-side opt-out.
+      fetch(`${API_BASE}/api/campaigns/preference`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && typeof data.enabled === "boolean") {
+            setPrefs((p) => ({ ...p, productTips: data.enabled }));
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -163,6 +175,14 @@ export default function Settings() {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ enabled: next.dailyReminder }),
+      }).catch(() => {});
+    }
+    // Marketing/tips emails have their own server-side opt-out.
+    if (key === "productTips" && token()) {
+      fetch(`${API_BASE}/api/campaigns/preference`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ enabled: next.productTips }),
       }).catch(() => {});
     }
   };
@@ -433,6 +453,7 @@ export default function Settings() {
           {[
             { key: "dailyReminder", title: "Daily mood reminder", desc: "A gentle nudge to check in each day" },
             { key: "weeklyInsight", title: "Weekly insight summary", desc: "Get your mood recap every week" },
+            { key: "productTips", title: "Tips & product updates", desc: "Occasional emails with wellness tips and new features (separate from your mood reminders)" },
             { key: "communityReplies", title: "Community replies", desc: "Notify me when someone replies to my posts" },
             { key: "anonymousMode", title: "Anonymous in community", desc: "Hide your real name on forum posts" },
             { key: "showActivity", title: "Show my activity status", desc: "Let people you chat with see when you're active and your last seen. Turning this off also hides theirs from you." },
