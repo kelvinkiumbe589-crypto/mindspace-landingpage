@@ -113,9 +113,12 @@ export default function Dashboard() {
     setEntries(await loadMoods());
   };
 
-  // Pull the real community feed and keep the most-engaged posts. There's no
-  // per-post view tracking yet, so "engagement" = likes first, then replies,
-  // then recency — the closest proxy to "most liked / most impressions".
+  // Pull the real community feed and surface the most-engaged posts. Rank by a
+  // weighted score — likes and replies count most, impressions (views) add a
+  // smaller signal — with recency as the tiebreak.
+  const engagementScore = (p) =>
+    (p.likeCount || 0) * 3 + (p.replyCount || 0) * 2 + (p.viewCount || 0) * 0.15;
+
   const loadPosts = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/forum/posts`);
@@ -124,8 +127,7 @@ export default function Dashboard() {
       const ranked = (Array.isArray(data) ? data : [])
         .slice()
         .sort((a, b) =>
-          (b.likeCount || 0) - (a.likeCount || 0) ||
-          (b.replyCount || 0) - (a.replyCount || 0) ||
+          engagementScore(b) - engagementScore(a) ||
           new Date(b.createdAt) - new Date(a.createdAt)
         );
       setPosts(ranked);
@@ -275,9 +277,10 @@ export default function Dashboard() {
     text: p.content || "",
     likes: p.likeCount || 0,
     replies: p.replyCount || 0,
+    views: p.viewCount || 0,
     time: timeAgo(p.createdAt),
     thumb: p.mediaType === "image" ? p.mediaUrl : null,
-    top: i === 0 && ((p.likeCount || 0) > 0 || (p.replyCount || 0) > 0),
+    top: i === 0 && ((p.likeCount || 0) > 0 || (p.replyCount || 0) > 0 || (p.viewCount || 0) > 0),
   }));
 
   const iconBtn = {
@@ -643,7 +646,7 @@ export default function Dashboard() {
                     {post.thumb && (
                       <img src={post.thumb} alt="" style={{ width: "100%", maxHeight: "120px", objectFit: "cover", borderRadius: "10px", marginBottom: "10px", border: "1px solid var(--border)" }} />
                     )}
-                    <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>{"❤️"} {post.likes} {"·"} {"\u{1F4AC}"} {post.replies} {"·"} {post.time}</span>
+                    <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>{"❤️"} {post.likes} {"·"} {"\u{1F4AC}"} {post.replies} {"·"} {"\u{1F441}️"} {post.views} {"·"} {post.time}</span>
                   </div>
                 </div>
               ))}

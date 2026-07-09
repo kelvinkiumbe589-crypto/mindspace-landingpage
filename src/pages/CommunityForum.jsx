@@ -14,6 +14,7 @@ import {
   Moon,
   ChevronDown,
   ImagePlus,
+  Eye,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
@@ -55,6 +56,17 @@ function loadBookmarks() {
   }
 }
 
+// Posts already counted as viewed this session (per-tab, so a refresh next day
+// counts again — a reasonable "unique view per session" proxy).
+const VIEWED_KEY = 'mindspace_forum_viewed';
+function loadViewed() {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem(VIEWED_KEY) || '[]'));
+  } catch (e) {
+    return new Set();
+  }
+}
+
 // Map a backend ReplyResponse to the shape the UI renders.
 function mapReply(r) {
   const author = r.author || 'Anonymous';
@@ -85,6 +97,7 @@ function mapPost(p, bookmarks) {
     tags: [],
     likes: p.likeCount || 0,
     liked: p.likedByMe || false,
+    views: p.viewCount || 0,
     mine: !!p.mine,
     bookmarked: bookmarks ? bookmarks.has(p.id) : false,
     replyCount: p.replyCount || 0,
@@ -119,6 +132,12 @@ export default function CommunityForum() {
   const [openComments, setOpenComments] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
 
+  // View (impression) tracking. We count a post as viewed once per browser
+  // session when its card actually scrolls into view, so counts aren't inflated
+  // by re-renders or repeat visits within a session.
+  const viewObserver = useRef(null);
+  const viewedIds = useRef(loadViewed());
+
   const loadPosts = async () => {
     try {
       // Send the token when signed in so the server can flag which posts I've liked.
@@ -146,6 +165,44 @@ export default function CommunityForum() {
     }
     loadPosts();
   }, []);
+
+  // Fire a one-time impression for a post, then reflect the authoritative count.
+  const recordView = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/forum/posts/${id}/view`, { method: 'POST' });
+      if (!res.ok) return;
+      const { viewCount } = await res.json();
+      if (typeof viewCount === 'number' && viewCount >= 0) {
+        setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, views: viewCount } : p)));
+      }
+    } catch (e) {}
+  };
+
+  // Set up a single IntersectionObserver; each card registers itself below.
+  useEffect(() => {
+    viewObserver.current = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const id = entry.target.dataset.postId;
+          if (!id || viewedIds.current.has(id)) continue;
+          viewedIds.current.add(id);
+          try { sessionStorage.setItem(VIEWED_KEY, JSON.stringify([...viewedIds.current])); } catch (e) {}
+          viewObserver.current.unobserve(entry.target);
+          recordView(id);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    return () => viewObserver.current?.disconnect();
+  }, []);
+
+  // Callback ref: observe a card unless we've already counted it this session.
+  const registerCard = (id) => (node) => {
+    if (node && viewObserver.current && !viewedIds.current.has(id)) {
+      viewObserver.current.observe(node);
+    }
+  };
 
   const initial = userName.charAt(0).toUpperCase();
 
@@ -471,6 +528,8 @@ export default function CommunityForum() {
               {filtered.map((post) => (
                 <div
                   key={post.id}
+                  ref={registerCard(post.id)}
+                  data-post-id={post.id}
                   className="hover-lift bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--border)] transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -566,10 +625,16 @@ export default function CommunityForum() {
                     >
                       <MessageSquare size={15} /> {post.comments ? post.comments.length : post.replyCount}
                     </button>
+                    <span
+                      title={`${post.views} ${post.views === 1 ? 'view' : 'views'}`}
+                      className="flex items-center gap-1.5 ml-auto text-[var(--text-dim)]"
+                    >
+                      <Eye size={15} /> {post.views}
+                    </span>
                     <button
                       onClick={() => toggleBookmark(post.id)}
                       title={post.bookmarked ? 'Remove bookmark' : 'Save post'}
-                      className={`flex items-center gap-1.5 transition-colors ml-auto ${
+                      className={`flex items-center gap-1.5 transition-colors ${
                         post.bookmarked ? 'text-amber-400' : 'hover:text-amber-400'
                       }`}
                     >
