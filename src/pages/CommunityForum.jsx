@@ -20,6 +20,7 @@ import {
   Link2,
   Pencil,
   Trash2,
+  Flag,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
@@ -143,9 +144,9 @@ export default function CommunityForum() {
   const viewObserver = useRef(null);
   const viewedIds = useRef(loadViewed());
 
-  // Kebab (⋯) menu: which post's menu is open + where to anchor it (fixed coords,
-  // so it can't be clipped by the scrolling feed). Plus the impressions modal.
-  const [menu, setMenu] = useState(null); // { id, top, left }
+  // Kebab (⋯) menu: what's open (a post or a comment) + where to anchor it (fixed
+  // coords, so it can't be clipped by the scrolling feed). Plus the impressions modal.
+  const [menu, setMenu] = useState(null); // { kind:'post'|'comment', id, postId?, mine, top, left }
   const [impressionsId, setImpressionsId] = useState(null);
   const didDeepLink = useRef(false);
 
@@ -216,16 +217,33 @@ export default function CommunityForum() {
   };
 
   // Toggle the ⋯ menu, anchoring it under the button (right-aligned, clamped).
+  // `target` = { kind:'post'|'comment', id, postId?, mine }.
   const MENU_W = 208;
-  const openMenu = (e, id) => {
-    if (menu?.id === id) { setMenu(null); return; }
+  const openMenu = (e, target) => {
+    if (menu && menu.id === target.id && menu.kind === target.kind) { setMenu(null); return; }
     const r = e.currentTarget.getBoundingClientRect();
-    setMenu({ id, top: r.bottom + 6, left: Math.max(8, r.right - MENU_W) });
+    setMenu({ ...target, top: r.bottom + 6, left: Math.max(8, r.right - MENU_W) });
   };
 
   const copyPostLink = (id) => {
     const url = `${window.location.origin}/community-forum?post=${id}`;
     try { navigator.clipboard?.writeText(url); } catch (e) {}
+  };
+
+  // Report a post or comment to the MindSpace team.
+  const report = async (target) => {
+    if (!token()) { navigate('/signin'); return; }
+    const what = target.kind === 'comment' ? 'comment' : 'post';
+    const reason = window.prompt(`Report this ${what}? Add an optional note for the MindSpace team:`, '');
+    if (reason === null) return; // cancelled
+    try {
+      await fetch(`${API_BASE}/api/forum/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify(target.kind === 'comment' ? { replyId: target.id, reason } : { postId: target.id, reason }),
+      });
+      window.alert('Thanks — your report has been sent to the MindSpace team.');
+    } catch (e) {}
   };
 
   // If arrived via a "Copy link" URL (?post=…), scroll to and briefly highlight it.
@@ -584,10 +602,10 @@ export default function CommunityForum() {
                     </div>
                     {editingPost !== post.id && (
                       <button
-                        onClick={(e) => openMenu(e, post.id)}
+                        onClick={(e) => openMenu(e, { kind: 'post', id: post.id, mine: post.mine })}
                         title="More"
                         className={`w-8 h-8 -mr-1 ml-auto shrink-0 rounded-full flex items-center justify-center transition-colors ${
-                          menu?.id === post.id ? 'bg-[var(--card-2)] text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--card-2)]'
+                          menu?.kind === 'post' && menu?.id === post.id ? 'bg-[var(--card-2)] text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--card-2)]'
                         }`}
                       >
                         <MoreHorizontal size={18} />
@@ -698,11 +716,16 @@ export default function CommunityForum() {
                               <p className="text-xs text-[var(--text-muted)] mb-0.5">
                                 <span className="font-medium text-[var(--text-soft)]">{c.author}</span> · {c.time}
                               </p>
-                              {c.mine && editingComment !== c.id && (
-                                <span className="flex items-center gap-2 shrink-0">
-                                  <button onClick={() => startEditComment(c)} className="text-[11px] text-indigo-300 hover:text-indigo-200">Edit</button>
-                                  <button onClick={() => deleteComment(post.id, c.id)} className="text-[11px] text-rose-300 hover:text-rose-200">Delete</button>
-                                </span>
+                              {editingComment !== c.id && (
+                                <button
+                                  onClick={(e) => openMenu(e, { kind: 'comment', id: c.id, postId: post.id, mine: c.mine })}
+                                  title="More"
+                                  className={`shrink-0 w-6 h-6 -mr-1 rounded-full flex items-center justify-center transition-colors ${
+                                    menu?.kind === 'comment' && menu?.id === c.id ? 'bg-[var(--card)] text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--card)]'
+                                  }`}
+                                >
+                                  <MoreHorizontal size={15} />
+                                </button>
                               )}
                             </div>
                             {editingComment === c.id ? (
@@ -819,36 +842,74 @@ export default function CommunityForum() {
         </div>
       </main>
 
-      {/* ⋯ post menu (X-style). Rendered once, positioned at the clicked button. */}
+      {/* ⋯ menu (X-style) for posts and comments. Rendered once, at the clicked button. */}
       {menu && (() => {
-        const p = posts.find((x) => x.id === menu.id);
-        if (!p) return null;
         const item = 'w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-[var(--card-2)] text-left transition-colors';
-        return (
+        const backdrop = <div className="fixed inset-0 z-[55]" onClick={() => setMenu(null)} />;
+        const shell = (children) => (
           <>
-            <div className="fixed inset-0 z-[55]" onClick={() => setMenu(null)} />
+            {backdrop}
             <div
               className="fixed z-[56] w-52 bg-[var(--elevated)] border border-[var(--border)] rounded-xl shadow-2xl py-1 text-sm overflow-hidden"
               style={{ top: menu.top, left: menu.left }}
             >
-              <button onClick={() => { setImpressionsId(p.id); setMenu(null); }} className={item}>
-                <BarChart3 size={16} className="text-[var(--text-muted)]" /> View impressions
-              </button>
-              <button onClick={() => { copyPostLink(p.id); setMenu(null); }} className={item}>
-                <Link2 size={16} className="text-[var(--text-muted)]" /> Copy link
-              </button>
-              {p.mine && (
+              {children}
+            </div>
+          </>
+        );
+
+        if (menu.kind === 'comment') {
+          const p = posts.find((x) => x.id === menu.postId);
+          const c = p?.comments?.find((cc) => cc.id === menu.id);
+          return shell(
+            <>
+              {menu.mine ? (
                 <>
-                  <div className="my-1 border-t border-[var(--border)]" />
-                  <button onClick={() => { startEditPost(p); setMenu(null); }} className={item}>
-                    <Pencil size={16} className="text-indigo-300" /> Edit post
+                  <button onClick={() => { if (c) startEditComment(c); setMenu(null); }} className={item}>
+                    <Pencil size={16} className="text-indigo-300" /> Edit comment
                   </button>
-                  <button onClick={() => { setMenu(null); deletePost(p.id); }} className={`${item} text-rose-300`}>
-                    <Trash2 size={16} /> Delete post
+                  <button onClick={() => { setMenu(null); deleteComment(menu.postId, menu.id); }} className={`${item} text-rose-300`}>
+                    <Trash2 size={16} /> Delete comment
                   </button>
                 </>
+              ) : (
+                <button onClick={() => { const t = menu; setMenu(null); report(t); }} className={item}>
+                  <Flag size={16} className="text-amber-300" /> Report comment
+                </button>
               )}
-            </div>
+            </>
+          );
+        }
+
+        // Post menu
+        const p = posts.find((x) => x.id === menu.id);
+        if (!p) return null;
+        return shell(
+          <>
+            <button onClick={() => { setImpressionsId(p.id); setMenu(null); }} className={item}>
+              <BarChart3 size={16} className="text-[var(--text-muted)]" /> View impressions
+            </button>
+            <button onClick={() => { copyPostLink(p.id); setMenu(null); }} className={item}>
+              <Link2 size={16} className="text-[var(--text-muted)]" /> Copy link
+            </button>
+            {p.mine ? (
+              <>
+                <div className="my-1 border-t border-[var(--border)]" />
+                <button onClick={() => { startEditPost(p); setMenu(null); }} className={item}>
+                  <Pencil size={16} className="text-indigo-300" /> Edit post
+                </button>
+                <button onClick={() => { setMenu(null); deletePost(p.id); }} className={`${item} text-rose-300`}>
+                  <Trash2 size={16} /> Delete post
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="my-1 border-t border-[var(--border)]" />
+                <button onClick={() => { const t = { kind: 'post', id: p.id }; setMenu(null); report(t); }} className={item}>
+                  <Flag size={16} className="text-amber-300" /> Report post
+                </button>
+              </>
+            )}
           </>
         );
       })()}
