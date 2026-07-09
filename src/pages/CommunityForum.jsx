@@ -15,6 +15,11 @@ import {
   ChevronDown,
   ImagePlus,
   Eye,
+  MoreHorizontal,
+  BarChart3,
+  Link2,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
@@ -138,6 +143,12 @@ export default function CommunityForum() {
   const viewObserver = useRef(null);
   const viewedIds = useRef(loadViewed());
 
+  // Kebab (⋯) menu: which post's menu is open + where to anchor it (fixed coords,
+  // so it can't be clipped by the scrolling feed). Plus the impressions modal.
+  const [menu, setMenu] = useState(null); // { id, top, left }
+  const [impressionsId, setImpressionsId] = useState(null);
+  const didDeepLink = useRef(false);
+
   const loadPosts = async () => {
     try {
       // Send the token when signed in so the server can flag which posts I've liked.
@@ -203,6 +214,33 @@ export default function CommunityForum() {
       viewObserver.current.observe(node);
     }
   };
+
+  // Toggle the ⋯ menu, anchoring it under the button (right-aligned, clamped).
+  const MENU_W = 208;
+  const openMenu = (e, id) => {
+    if (menu?.id === id) { setMenu(null); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    setMenu({ id, top: r.bottom + 6, left: Math.max(8, r.right - MENU_W) });
+  };
+
+  const copyPostLink = (id) => {
+    const url = `${window.location.origin}/community-forum?post=${id}`;
+    try { navigator.clipboard?.writeText(url); } catch (e) {}
+  };
+
+  // If arrived via a "Copy link" URL (?post=…), scroll to and briefly highlight it.
+  useEffect(() => {
+    if (didDeepLink.current || posts.length === 0) return;
+    const pid = new URLSearchParams(window.location.search).get('post');
+    if (!pid) { didDeepLink.current = true; return; }
+    const el = document.querySelector(`[data-post-id="${pid}"]`);
+    if (el) {
+      didDeepLink.current = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-indigo-500');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-500'), 2000);
+    }
+  }, [posts.length]);
 
   const initial = userName.charAt(0).toUpperCase();
 
@@ -544,11 +582,16 @@ export default function CommunityForum() {
                         {post.time} · {post.category}
                       </p>
                     </div>
-                    {post.mine && editingPost !== post.id && (
-                      <span className="flex items-center gap-2 shrink-0 ml-auto">
-                        <button onClick={() => startEditPost(post)} className="text-[11px] text-indigo-300 hover:text-indigo-200">Edit</button>
-                        <button onClick={() => deletePost(post.id)} className="text-[11px] text-rose-300 hover:text-rose-200">Delete</button>
-                      </span>
+                    {editingPost !== post.id && (
+                      <button
+                        onClick={(e) => openMenu(e, post.id)}
+                        title="More"
+                        className={`w-8 h-8 -mr-1 ml-auto shrink-0 rounded-full flex items-center justify-center transition-colors ${
+                          menu?.id === post.id ? 'bg-[var(--card-2)] text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--card-2)]'
+                        }`}
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
                     )}
                   </div>
                   {editingPost === post.id ? (
@@ -775,6 +818,77 @@ export default function CommunityForum() {
           </div>
         </div>
       </main>
+
+      {/* ⋯ post menu (X-style). Rendered once, positioned at the clicked button. */}
+      {menu && (() => {
+        const p = posts.find((x) => x.id === menu.id);
+        if (!p) return null;
+        const item = 'w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-[var(--card-2)] text-left transition-colors';
+        return (
+          <>
+            <div className="fixed inset-0 z-[55]" onClick={() => setMenu(null)} />
+            <div
+              className="fixed z-[56] w-52 bg-[var(--elevated)] border border-[var(--border)] rounded-xl shadow-2xl py-1 text-sm overflow-hidden"
+              style={{ top: menu.top, left: menu.left }}
+            >
+              <button onClick={() => { setImpressionsId(p.id); setMenu(null); }} className={item}>
+                <BarChart3 size={16} className="text-[var(--text-muted)]" /> View impressions
+              </button>
+              <button onClick={() => { copyPostLink(p.id); setMenu(null); }} className={item}>
+                <Link2 size={16} className="text-[var(--text-muted)]" /> Copy link
+              </button>
+              {p.mine && (
+                <>
+                  <div className="my-1 border-t border-[var(--border)]" />
+                  <button onClick={() => { startEditPost(p); setMenu(null); }} className={item}>
+                    <Pencil size={16} className="text-indigo-300" /> Edit post
+                  </button>
+                  <button onClick={() => { setMenu(null); deletePost(p.id); }} className={`${item} text-rose-300`}>
+                    <Trash2 size={16} /> Delete post
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Impressions modal */}
+      {impressionsId && (() => {
+        const p = posts.find((x) => x.id === impressionsId);
+        if (!p) return null;
+        const rate = p.views > 0 ? Math.round((p.likes / p.views) * 100) : 0;
+        const stats = [
+          { icon: <Eye size={18} />, value: p.views, label: 'Views' },
+          { icon: <Heart size={18} />, value: p.likes, label: 'Likes' },
+          { icon: <MessageSquare size={18} />, value: p.replyCount ?? (p.comments ? p.comments.length : 0), label: 'Replies' },
+        ];
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-5" onClick={() => setImpressionsId(null)}>
+            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[var(--elevated)] border border-[var(--border)] rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-semibold flex items-center gap-2"><BarChart3 size={18} /> Post impressions</h2>
+                <button onClick={() => setImpressionsId(null)} className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"><X size={20} /></button>
+              </div>
+              <p className="text-sm text-[var(--text-muted)] mb-5 line-clamp-2">{p.title}</p>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {stats.map((s) => (
+                  <div key={s.label} className="bg-[var(--card-2)] border border-[var(--border)] rounded-xl p-3 text-center">
+                    <div className="flex justify-center text-[var(--text-muted)] mb-1.5">{s.icon}</div>
+                    <div className="text-xl font-bold">{s.value}</div>
+                    <div className="text-[11px] text-[var(--text-dim)]">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between text-sm bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-4 py-3">
+                <span className="text-[var(--text-muted)]">Engagement rate</span>
+                <span className="font-semibold">{rate}%</span>
+              </div>
+              <p className="text-[11px] text-[var(--text-dim)] mt-3 text-center">Views are counted once per reader each session.</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* New Post Modal */}
       {showComposer && (
