@@ -12,7 +12,6 @@ import { AccountGear } from "../components/AccountDrawer";
 import { loadMoods, saveMood, emojiForScore as emojiFor } from "../moods";
 
 const ENTRIES_KEY = "mindspace_entries";
-const POSTS_KEY = "mindspace_posts";
 import { API_BASE } from "../lib/api";
 
 export default function Dashboard() {
@@ -114,11 +113,22 @@ export default function Dashboard() {
     setEntries(await loadMoods());
   };
 
-  const loadPosts = () => {
+  // Pull the real community feed and keep the most-engaged posts. There's no
+  // per-post view tracking yet, so "engagement" = likes first, then replies,
+  // then recency — the closest proxy to "most liked / most impressions".
+  const loadPosts = async () => {
     try {
-      const stored = localStorage.getItem(POSTS_KEY);
-      const parsed = stored ? JSON.parse(stored) : [];
-      setPosts(Array.isArray(parsed) ? parsed : []);
+      const res = await fetch(`${API_BASE}/api/forum/posts`);
+      if (!res.ok) throw new Error("failed");
+      const data = await res.json();
+      const ranked = (Array.isArray(data) ? data : [])
+        .slice()
+        .sort((a, b) =>
+          (b.likeCount || 0) - (a.likeCount || 0) ||
+          (b.replyCount || 0) - (a.replyCount || 0) ||
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+      setPosts(ranked);
     } catch (e) {
       setPosts([]);
     }
@@ -142,6 +152,17 @@ export default function Dashboard() {
     if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
     if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
     return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  const timeAgo = (iso) => {
+    if (!iso) return "";
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (Number.isNaN(s)) return "";
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    if (s < 172800) return "yesterday";
+    return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
   };
 
   const emojiForScore = (score) => {
@@ -247,12 +268,16 @@ export default function Dashboard() {
   const drawnPoints = chartPoints.filter((p) => p.y !== null);
   const polyline = drawnPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
-  // Community preview from real forum posts
-  const communityPreview = posts.slice(0, 2).map((p) => ({
+  // Top community posts (already ranked by engagement in loadPosts).
+  const communityPreview = posts.slice(0, 2).map((p, i) => ({
     initial: (p.author || "?").charAt(0).toUpperCase(),
-    text: p.body || p.title || "",
-    replies: (p.comments || []).length,
-    time: p.time || "",
+    title: p.title || "",
+    text: p.content || "",
+    likes: p.likeCount || 0,
+    replies: p.replyCount || 0,
+    time: timeAgo(p.createdAt),
+    thumb: p.mediaType === "image" ? p.mediaUrl : null,
+    top: i === 0 && ((p.likeCount || 0) > 0 || (p.replyCount || 0) > 0),
   }));
 
   const iconBtn = {
@@ -605,11 +630,20 @@ export default function Dashboard() {
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
               {communityPreview.map((post, i) => (
-                <div key={i} className="hover-lift" style={{ display: "flex", gap: "12px", background: "var(--card-3)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px" }}>
+                <div key={i} onClick={() => navigate("/community-forum")} className="hover-lift" style={{ display: "flex", gap: "12px", background: "var(--card-3)", border: "1px solid var(--border)", borderRadius: "14px", padding: "18px", cursor: "pointer" }}>
                   <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "rgba(83,74,183,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, flexShrink: 0, color: "var(--accent-soft)" }}>{post.initial}</div>
-                  <div>
-                    <p style={{ fontSize: "13px", color: "var(--text-soft)", lineHeight: 1.5, marginBottom: "10px" }}>{post.text}</p>
-                    <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>{"\u{1F4AC}"} {post.replies} {post.replies === 1 ? "reply" : "replies"} {"·"} {post.time}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    {post.top && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 700, color: "#e07a52", background: "rgba(224,122,82,0.15)", padding: "2px 8px", borderRadius: "20px", marginBottom: "8px" }}>{"\u{1F525}"} Top post</span>
+                    )}
+                    {post.title && (
+                      <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-strong)", lineHeight: 1.4, margin: "0 0 4px" }}>{post.title}</p>
+                    )}
+                    <p style={{ fontSize: "13px", color: "var(--text-soft)", lineHeight: 1.5, marginBottom: "10px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{post.text}</p>
+                    {post.thumb && (
+                      <img src={post.thumb} alt="" style={{ width: "100%", maxHeight: "120px", objectFit: "cover", borderRadius: "10px", marginBottom: "10px", border: "1px solid var(--border)" }} />
+                    )}
+                    <span style={{ fontSize: "12px", color: "var(--text-dim)" }}>{"❤️"} {post.likes} {"·"} {"\u{1F4AC}"} {post.replies} {"·"} {post.time}</span>
                   </div>
                 </div>
               ))}
