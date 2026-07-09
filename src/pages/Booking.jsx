@@ -48,9 +48,11 @@ export default function Booking() {
   const [sessionType, setSessionType] = useState("online");
   const [durationMinutes, setDurationMinutes] = useState(60); // online call length paid for
   const [payMethod, setPayMethod] = useState("mpesa"); // mpesa | card | bank
+  const [phase, setPhase] = useState("details"); // details | payment
+  const [mpesaPhone, setMpesaPhone] = useState(""); // carried over from booking phone
   const [sessionDate, setSessionDate] = useState("");
   const [sessionTime, setSessionTime] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | creating | checkout | done
+  const [status, setStatus] = useState("idle"); // idle | creating | mpesa-wait | checkout | done
   const [statusMsg, setStatusMsg] = useState("");
   const [error, setError] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
@@ -81,7 +83,7 @@ export default function Booking() {
   const payLabel = payMethod === "card" ? "Card" : payMethod === "bank" ? "Bank" : "M-Pesa";
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canPay = isValidEmail && phone.replace(/\D/g, "").length >= 12 && sessionDate && sessionTime;
+  const detailsComplete = isValidEmail && phone.replace(/\D/g, "").length >= 12 && sessionDate && sessionTime;
   const scheduledAt = sessionDate && sessionTime ? `${sessionDate}T${sessionTime}` : null;
   const scheduledLabel = scheduledAt ? new Date(scheduledAt).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
 
@@ -132,8 +134,9 @@ export default function Booking() {
     }
   };
 
-  const handlePay = async () => {
-    if (!canPay || status === "creating") return;
+  // Card / bank → Pesapal hosted checkout (details entered securely on their page).
+  const handlePesapalPay = async () => {
+    if (!detailsComplete || status === "creating") return;
     if (!token()) { setError("Please sign in again to book a session."); return; }
     setError("");
     setStatus("creating");
@@ -195,6 +198,100 @@ export default function Booking() {
     }
   };
 
+  // Human-friendly message for a non-zero M-Pesa STK result code.
+  const mpesaFailMsg = (code, desc) => {
+    switch (String(code)) {
+      case "1032": return "You cancelled the M-Pesa request.";
+      case "1037": return "The request timed out — you didn't enter your PIN in time.";
+      case "1": return "Payment failed — insufficient M-Pesa balance.";
+      case "2001": return "Wrong M-Pesa PIN entered. Please try again.";
+      default: return desc || "The M-Pesa payment wasn't completed. Please try again.";
+    }
+  };
+
+  // Poll the STK status. While the prompt is pending, Daraja returns an error
+  // ("being processed") with no ResultCode — so we only act once ResultCode appears.
+  const pollMpesa = async (checkoutRequestId) => {
+    for (let i = 0; i < 24; i++) { // ~2 minutes
+      await sleep(5000);
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkoutRequestId }),
+        });
+        const d = await res.json();
+        if (d.ResultCode !== undefined && d.ResultCode !== null) {
+          return String(d.ResultCode) === "0" ? "success" : mpesaFailMsg(d.ResultCode, d.ResultDesc);
+        }
+        // else: still pending (errorCode 500.001.1001) — keep polling
+      } catch (e) {}
+    }
+    return "timeout";
+  };
+
+  // M-Pesa → native STK push to the number carried over from booking (no redirect).
+  const handleMpesaPay = async () => {
+    if (status === "creating" || status === "mpesa-wait") return;
+    if (!token()) { setError("Please sign in again to book a session."); return; }
+    if (mpesaPhone.replace(/\D/g, "").length < 12) {
+      setError("Enter a valid M-Pesa number, e.g. +254 7XX XXX XXX.");
+      return;
+    }
+    setError("");
+    setStatus("creating");
+    setStatusMsg("Reserving your session…");
+    try {
+      // 1. Create the booking
+      const bres = await fetchRetry(`${API_BASE}/api/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ therapistId: therapist.userId, sessionType: sessionType.toUpperCase(), scheduledAt, phone: mpesaPhone, durationMinutes: sessionType === "online" ? durationMinutes : undefined }),
+      });
+      const booking = await bres.json();
+      if (!bres.ok || !booking.id) {
+        setStatus("idle"); setStatusMsg("");
+        setError(booking.error || "Could not create the booking. Please sign in and try again.");
+        return;
+      }
+      bookingIdRef.current = booking.id;
+
+      // 2. Trigger the STK push
+      setStatusMsg("Sending the M-Pesa prompt…");
+      const sres = await fetchRetry(`${API_BASE}/api/payments/stk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: mpesaPhone, amount: amountKes, accountReference: "MindSpace", description: `MindSpace ${sessionLabel} session` }),
+      });
+      const stk = await sres.json();
+      const checkoutRequestId = stk.CheckoutRequestID;
+      if (!sres.ok || String(stk.ResponseCode) !== "0" || !checkoutRequestId) {
+        await markBooking(booking.id, "failed");
+        setStatus("idle");
+        setError(stk.errorMessage || stk.CustomerMessage || stk.ResponseDescription || "Couldn't start the M-Pesa prompt. Check the number and try again.");
+        return;
+      }
+
+      // 3. Wait for the user to enter their PIN, polling for the result
+      setStatus("mpesa-wait");
+      const result = await pollMpesa(checkoutRequestId);
+      if (result === "success") {
+        await markBooking(booking.id, "paid");
+        setStatus("done");
+      } else if (result === "timeout") {
+        setStatus("idle");
+        setError("We didn't get a confirmation in time. If you completed the payment, it may take a moment — check 'My sessions'.");
+      } else {
+        await markBooking(booking.id, "failed");
+        setStatus("idle");
+        setError(result);
+      }
+    } catch (e) {
+      setStatus("idle"); setStatusMsg("");
+      setError("We couldn't reach the server just now — it may have been waking up. Please try again in a moment.");
+    }
+  };
+
   // ── Embedded Pesapal checkout ──
   if (status === "checkout" && checkoutUrl) {
     return (
@@ -217,13 +314,24 @@ export default function Booking() {
     );
   }
 
-  if (status === "creating") {
+  if (status === "creating" || status === "mpesa-wait") {
+    const waiting = status === "mpesa-wait";
     return (
       <div style={wrap}>
         <div style={{ ...card, maxWidth: "440px", textAlign: "center" }}>
-          <div style={{ width: "52px", height: "52px", borderRadius: "50%", border: "4px solid var(--border)", borderTopColor: "#534AB7", margin: "0 auto 22px", animation: "spin 1s linear infinite" }} />
-          <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 8px" }}>Just a moment…</h1>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6 }}>{statusMsg || "Please wait."}</p>
+          {waiting ? (
+            <div style={{ fontSize: "40px", marginBottom: "16px" }}>📲</div>
+          ) : (
+            <div style={{ width: "52px", height: "52px", borderRadius: "50%", border: "4px solid var(--border)", borderTopColor: "#534AB7", margin: "0 auto 22px", animation: "spin 1s linear infinite" }} />
+          )}
+          <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--text-strong)", margin: "0 0 8px" }}>
+            {waiting ? "Check your phone" : "Just a moment…"}
+          </h1>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.6 }}>
+            {waiting
+              ? `We sent an M-Pesa prompt to ${mpesaPhone.trim()} for KES ${amountKes.toLocaleString()}. Enter your PIN to complete the payment — this page confirms automatically.`
+              : (statusMsg || "Please wait.")}
+          </p>
         </div>
       </div>
     );
@@ -254,6 +362,88 @@ export default function Booking() {
           <div style={{ display: "flex", gap: "12px" }}>
             <button onClick={() => navigate("/find-a-therapist")} style={{ ...secondaryBtn, flex: 1 }}>My sessions</button>
             <button onClick={() => navigate("/dashboard")} style={{ ...primaryBtn, flex: 1 }}>Go to dashboard</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Payment phase ──
+  if (phase === "payment") {
+    const methods = [{ k: "mpesa", label: "M-Pesa", Icon: Smartphone }, { k: "card", label: "Card", Icon: CreditCard }, { k: "bank", label: "Bank", Icon: Building2 }];
+    return (
+      <div style={wrap}>
+        <div style={{ width: "100%", maxWidth: "560px" }}>
+          <button onClick={() => { setError(""); setPhase("details"); }} style={backBtn}><ArrowLeft size={16} /> Back to details</button>
+
+          <div style={card}>
+            {/* Order summary */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: "16px", borderBottom: "1px solid var(--border)", marginBottom: "20px" }}>
+              <div>
+                <h1 style={{ fontSize: "18px", fontWeight: 600, color: "var(--text-strong)", margin: 0 }}>Payment</h1>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: "4px 0 0" }}>{sessionLabel} session with {therapist.name}{scheduledLabel ? ` · ${scheduledLabel}` : ""}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-strong)" }}>KES {amountKes.toLocaleString()}</div>
+                <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>total</div>
+              </div>
+            </div>
+
+            {/* Method picker */}
+            <h2 style={sectionH}>How would you like to pay?</h2>
+            <div style={{ display: "flex", gap: "10px", marginBottom: "22px" }}>
+              {methods.map((m) => (
+                <button key={m.k} onClick={() => { setError(""); setPayMethod(m.k); }} style={sessionCard(payMethod === m.k)}>
+                  <m.Icon size={20} />
+                  <span style={{ fontWeight: 600 }}>{m.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Method-specific panel */}
+            {payMethod === "mpesa" && (
+              <div style={{ marginBottom: "20px" }}>
+                <label style={label}>M-Pesa number</label>
+                <input value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="+254 7XX XXX XXX" style={input} />
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: "8px 0 0", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Smartphone size={13} /> We'll send a prompt to this number — enter your PIN to pay.
+                </p>
+              </div>
+            )}
+            {payMethod === "card" && (
+              <div style={{ marginBottom: "20px" }}>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                  {["VISA", "Mastercard"].map((b) => (
+                    <span key={b} style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.03em", padding: "6px 12px", borderRadius: "8px", background: "var(--card-2)", border: "1px solid var(--border)", color: "var(--text-soft)" }}>{b}</span>
+                  ))}
+                </div>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0, display: "flex", alignItems: "flex-start", gap: "6px", lineHeight: 1.6 }}>
+                  <ShieldCheck size={14} style={{ color: "#1D9E75", flexShrink: 0, marginTop: "1px" }} /> Enter your Visa or Mastercard details on the next secure page. Your card number never touches MindSpace.
+                </p>
+              </div>
+            )}
+            {payMethod === "bank" && (
+              <div style={{ marginBottom: "20px" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-dim)", margin: 0, display: "flex", alignItems: "flex-start", gap: "6px", lineHeight: 1.6 }}>
+                  <ShieldCheck size={14} style={{ color: "#1D9E75", flexShrink: 0, marginTop: "1px" }} /> Pay straight from your bank. You'll pick your bank and enter the details on the next secure page.
+                </p>
+              </div>
+            )}
+
+            {error && <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "#f0a07a" }}>⚠️ {error}</div>}
+
+            {payMethod === "mpesa" ? (
+              <button onClick={handleMpesaPay} style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                <Smartphone size={16} /> Pay KES {amountKes.toLocaleString()} via M-Pesa
+              </button>
+            ) : (
+              <button onClick={handlePesapalPay} style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                <ShieldCheck size={16} /> Continue to secure {payLabel.toLowerCase()} payment →
+              </button>
+            )}
+            <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>
+              {payMethod === "mpesa" ? "🔒 Lipa na M-Pesa — secured by Safaricom Daraja." : "🔒 Secured by Pesapal."}
+            </p>
           </div>
         </div>
       </div>
@@ -361,22 +551,16 @@ export default function Booking() {
             <div><label style={label}>Phone number</label><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" style={input} /></div>
           </div>
 
-          <h2 style={sectionH}>How would you like to pay?</h2>
-          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-            {[{ k: "mpesa", label: "M-Pesa", Icon: Smartphone }, { k: "card", label: "Card", Icon: CreditCard }, { k: "bank", label: "Bank", Icon: Building2 }].map((m) => (
-              <button key={m.k} onClick={() => setPayMethod(m.k)} style={sessionCard(payMethod === m.k)}>
-                <m.Icon size={20} />
-                <span style={{ fontWeight: 600 }}>{m.label}</span>
-              </button>
-            ))}
-          </div>
-
           {error && <div style={{ background: "rgba(216,90,48,0.12)", border: "1px solid rgba(216,90,48,0.3)", borderRadius: "10px", padding: "12px 14px", marginBottom: "14px", fontSize: "13px", color: "#f0a07a" }}>⚠️ {error}</div>}
 
-          <button onClick={handlePay} disabled={!canPay} style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: canPay ? 1 : 0.5, cursor: canPay ? "pointer" : "not-allowed" }}>
-            <ShieldCheck size={16} /> Pay KES {amountKes.toLocaleString()} with {payLabel}
+          <button
+            onClick={() => { setError(""); setMpesaPhone(phone); setPhase("payment"); }}
+            disabled={!detailsComplete}
+            style={{ ...primaryBtn, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: detailsComplete ? 1 : 0.5, cursor: detailsComplete ? "pointer" : "not-allowed" }}
+          >
+            Continue to payment →
           </button>
-          <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>🔒 Secured by Pesapal — pick {payLabel} on the next screen to complete.</p>
+          {!detailsComplete && <p style={{ fontSize: "11px", color: "var(--text-dim)", textAlign: "center", marginTop: "12px" }}>Add your details, a day and a time to continue.</p>}
         </div>
       </div>
     </div>
