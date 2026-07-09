@@ -3,7 +3,7 @@ import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSupportUnread, openSupportChat } from "../useSupportUnread";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const token = () => localStorage.getItem("mindspace_token");
 
 /**

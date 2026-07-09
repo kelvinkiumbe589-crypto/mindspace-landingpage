@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../lib/api";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ export default function SignIn() {
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleGoogle = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = `${API_BASE}/oauth2/authorization/google`;
   };
 
   const validate = () => {
@@ -30,7 +31,7 @@ export default function SignIn() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/api/auth/login", {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -44,7 +45,7 @@ export default function SignIn() {
         setServerError(data.message || "Invalid email or password.");
       }
     } catch (err) {
-      setServerError("Could not connect to server. Make sure the backend is running on port 8080.");
+      setServerError("Could not connect to the server. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }

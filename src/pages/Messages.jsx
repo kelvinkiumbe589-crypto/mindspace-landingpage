@@ -8,7 +8,7 @@ import {
   Bell, BellOff, Ban, Flag, LogOut, X, MessageSquare, Shield,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+import { API_BASE } from '../lib/api';
 const WS_BASE = API_BASE.replace(/^http/, 'ws');
 const token = () => localStorage.getItem('mindspace_token');
 

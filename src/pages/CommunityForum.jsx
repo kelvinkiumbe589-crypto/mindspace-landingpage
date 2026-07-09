@@ -19,7 +19,7 @@ import Sidebar from '../components/Sidebar';
 import { AccountGear } from '../components/AccountDrawer';
 import NotificationBell from '../components/NotificationBell';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+import { API_BASE } from '../lib/api';
 const BOOKMARKS_KEY = 'mindspace_forum_bookmarks';
 const categories = ['All', 'Anxiety', 'Sleep', 'Relationships', 'Wins 🎉', 'General'];
 

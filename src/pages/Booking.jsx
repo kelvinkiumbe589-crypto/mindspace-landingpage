@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, ShieldCheck, CheckCircle2, Mail, Video, MapPin, Star, Clock, Smartphone, CreditCard, Building2 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TIME_SLOTS = ["08:00", "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 

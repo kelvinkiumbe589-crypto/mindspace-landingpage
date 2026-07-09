@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageSquare, X, Send } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const token = () => localStorage.getItem("mindspace_token");
 
 /**

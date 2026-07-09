@@ -8,7 +8,7 @@ import { useIsMobile } from "../useIsMobile";
 // Lazy-load the three.js globe so it's a separate chunk (keeps initial bundle small)
 const Globe3D = lazy(() => import("../components/ui/3d-globe").then((m) => ({ default: m.Globe3D })));
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const SUPPORT_EMAIL = "kelvinkiumbe589@gmail.com";
 const SUPPORT_PHONE = "+254757306837";
 const SUPPORT_LOCATION = "Nairobi, Kenya";

@@ -25,7 +25,7 @@ import SessionRoom from '../components/SessionRoom';
 import { AccountGear } from '../components/AccountDrawer';
 import { useSupportUnread, openSupportChat } from '../useSupportUnread';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+import { API_BASE } from '../lib/api';
 const specialties = ['All', 'Anxiety', 'Depression', 'Relationships', 'Trauma', 'Sleep', 'Stress'];
 
 export default function FindATherapist() {

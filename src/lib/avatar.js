@@ -6,7 +6,7 @@
 // If the backend doesn't support the avatar endpoints yet, sharing degrades
 // quietly and the user still sees their own photo locally.
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "./api";
 const USER_KEY = "mindspace_user";
 const token = () => localStorage.getItem("mindspace_token");
 

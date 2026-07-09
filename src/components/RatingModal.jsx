@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Star, Heart } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const RATED_KEY = "mindspace_rated";
 const DISMISSED_KEY = "mindspace_rating_dismissed";
 

@@ -11,7 +11,7 @@ import { loadMoods } from "../moods";
 import { getProfile, saveAvatar, removeAvatar, setAvatarVisibility, fileToAvatarDataUrl } from "../lib/avatar";
 
 const PREFS_KEY = "mindspace_prefs";
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const token = () => localStorage.getItem("mindspace_token");
 
 export default function Settings() {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Coffee, Heart, Smartphone, CreditCard, Building2 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const PRESETS = [100, 250, 500, 1000];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

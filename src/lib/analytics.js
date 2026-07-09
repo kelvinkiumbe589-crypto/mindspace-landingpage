@@ -2,7 +2,7 @@
 // with a random per-browser id so unique visitors can be counted without knowing
 // who anyone is. No IP, no account, no personal data.
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "./api";
 const SID_KEY = "mindspace_sid";
 
 function sessionId() {

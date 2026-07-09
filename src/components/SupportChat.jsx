@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageCircle, X, Send, LifeBuoy } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import { API_BASE } from "../lib/api";
 const SEEN_KEY = "mindspace_support_seen";
 const WHATSAPP_NUMBER = "254757306837"; // +254 757 306 837
 
