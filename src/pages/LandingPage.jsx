@@ -106,7 +106,170 @@ export default function LandingPage() {
     if (!feeling.trim() || demoLoading) return;
     setDemoLoading(true);
     setDemoInsight("");
-    try {int: "center", marginBottom: "60px" }}>
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moodContext: `The user says they feel: ${feeling}`, question: "Give a short, warm one-paragraph reflection and one practical tip." }),
+      });
+      if (!res.ok) throw new Error("bad");
+      const data = await res.json();
+      setDemoInsight(data.reply);
+    } catch (e) {
+      setDemoInsight("Our AI is resting right now — sign up and try it live on your dashboard, where MindSpace turns your moods into personalised insights.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
+    if (!sName.trim() || !sEmail.trim() || !sMsg.trim()) return;
+    setSStatus("sending");
+    try {
+      // Start a support conversation the admin sees in the same inbox as logged-in
+      // users. Since the visitor isn't logged in, the admin's reply is emailed to them.
+      const message = (sPhone.trim() ? `Phone: ${sPhone.trim()}\n\n` : "") + sMsg;
+      const res = await fetch(`${API_BASE}/api/support/guest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: sName, email: sEmail, message }),
+      });
+      if (res.ok) {
+        setSStatus("sent");
+        setSName(""); setSEmail(""); setSPhone(""); setSMsg("");
+        return;
+      }
+      throw new Error("unavailable");
+    } catch (err) {
+      // Fallback: open the visitor's mail client pre-filled to the support inbox
+      const subject = encodeURIComponent(`MindSpace support request from ${sName}`);
+      const body = encodeURIComponent(`Name: ${sName}\nEmail: ${sEmail}\nPhone: ${sPhone}\n\n${sMsg}`);
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+      setSStatus("mailto");
+    }
+  };
+
+  return (
+    <div style={{ background: "#0d0d14", minHeight: "100vh", color: "#e8e6ff", fontFamily: "system-ui, sans-serif", position: "relative", overflowX: "hidden" }}>
+
+      {/* Aurora background */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "-120px", left: "-80px", width: "460px", height: "460px", borderRadius: "50%", background: "radial-gradient(circle, rgba(83,74,183,0.35), transparent 70%)", filter: "blur(60px)", animation: "auroraFloat 16s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", top: "8%", right: "-100px", width: "420px", height: "420px", borderRadius: "50%", background: "radial-gradient(circle, rgba(127,119,221,0.28), transparent 70%)", filter: "blur(60px)", animation: "auroraFloat 20s ease-in-out infinite reverse" }} />
+        <div style={{ position: "absolute", bottom: "-160px", left: "35%", width: "480px", height: "480px", borderRadius: "50%", background: "radial-gradient(circle, rgba(91,143,216,0.20), transparent 70%)", filter: "blur(70px)", animation: "auroraFloat 24s ease-in-out infinite" }} />
+      </div>
+      {/* Grain overlay */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.04, backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
+
+      {/* Page content above the background */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+
+      {/* ── NAVBAR ── */}
+      <nav style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: scrolled ? (isMobile ? "10px 16px" : "10px 40px") : (isMobile ? "14px 16px" : "18px 40px"),
+        borderBottom: "1px solid rgba(127,119,221,0.15)",
+        position: "sticky",
+        top: 0,
+        background: scrolled ? "rgba(13,13,20,0.96)" : "rgba(13,13,20,0.6)",
+        backdropFilter: "blur(14px)",
+        boxShadow: scrolled ? "0 8px 30px rgba(0,0,0,0.35)" : "none",
+        transition: "padding 0.3s ease, background 0.3s ease, box-shadow 0.3s ease",
+        zIndex: 100,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "18px", fontWeight: 500 }}>
+          <div style={{
+            width: "32px", height: "32px", background: "#534AB7",
+            borderRadius: "8px", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: "16px",
+          }}>🧠</div>
+          MindSpace
+        </div>
+        <div style={{ display: isMobile ? "none" : "flex", gap: "32px", fontSize: "14px", color: "#9d9bc4" }}>
+          {[
+            { label: "Features", action: () => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }) },
+            { label: "How it works", action: () => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" }) },
+            { label: "FAQ", action: () => document.getElementById("faq")?.scrollIntoView({ behavior: "smooth" }) },
+            { label: "Community", action: () => navigate("/community-forum") },
+            { label: "Therapists", action: () => navigate("/find-a-therapist") },
+          ].map(item => (
+            <span key={item.label} onClick={item.action} style={{ cursor: "pointer" }}
+              onMouseEnter={e => e.target.style.color = "#e8e6ff"}
+              onMouseLeave={e => e.target.style.color = "#9d9bc4"}>
+              {item.label}
+            </span>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button style={{
+            padding: "8px 20px", borderRadius: "8px",
+            border: "1px solid rgba(127,119,221,0.3)",
+            background: "transparent", color: "#c4c1f0",
+            fontSize: "14px", cursor: "pointer",
+          }} onClick={() => navigate("/signin")}
+          >Log in</button>
+          <button 
+          onClick={() => navigate("/signup")}
+          style={{
+            padding: "8px 20px", borderRadius: "8px",
+            border: "none", background: "#534AB7",
+            color: "#fff", fontSize: "14px", cursor: "pointer",
+            fontWeight: 500,
+          }}>Get started</button>
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <section style={{ position: "relative", textAlign: "center", padding: "80px 40px 0", overflow: "hidden" }}>
+
+        {/* Badge */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: "8px",
+          padding: "6px 16px", borderRadius: "20px",
+          border: "1px solid rgba(127,119,221,0.3)",
+          background: "rgba(83,74,183,0.1)",
+          fontSize: "13px", color: "#AFA9EC", marginBottom: "24px",
+        }}>
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7F77DD", display: "inline-block" }} />
+          AI-powered mental wellness for everyone
+        </div>
+
+        {/* 3D globe — wellness for people everywhere */}
+        <div style={{ height: "440px", maxWidth: "560px", margin: "0 auto 8px" }}>
+          <Suspense fallback={<div style={{ height: "100%" }} />}>
+            <Globe3D
+              className="h-full w-full"
+              markers={GLOBE_MARKERS}
+              config={{ atmosphereColor: "#7F77DD", atmosphereIntensity: 0.6, bumpScale: 4, autoRotateSpeed: 0.4 }}
+            />
+          </Suspense>
+        </div>
+
+        {/* Heading */}
+        <h1 style={{
+          fontSize: "clamp(36px, 6vw, 64px)",
+          fontWeight: 500, lineHeight: 1.1,
+          color: "#f0eeff", maxWidth: "700px",
+          margin: "0 auto 20px",
+        }}>
+          Your mental health,{" "}
+          <span className="gradient-text">tracked and supported</span>
+        </h1>
+
+        {/* Subtext */}
+        <p style={{
+          fontSize: "16px", color: "#9d9bc4",
+          maxWidth: "500px", margin: "0 auto 36px", lineHeight: 1.7,
+        }}>
+          Log moods daily, get AI wellness insights, connect anonymously with peers,
+          and book licensed therapists — all in one safe space.
+        </p>
+
+        {/* CTAs */}
+        <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginBottom: "60px" }}>
           <button
            onClick={() => navigate("/signup")}
            className="shimmer"

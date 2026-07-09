@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  ImagePlus,
 } from 'lucide-react';
 import { useTheme } from '../theme';
 import Sidebar from '../components/Sidebar';
@@ -20,6 +21,7 @@ import { AccountGear } from '../components/AccountDrawer';
 import NotificationBell from '../components/NotificationBell';
 
 import { API_BASE } from '../lib/api';
+import { fileToPostMedia } from '../lib/forumMedia';
 const BOOKMARKS_KEY = 'mindspace_forum_bookmarks';
 const categories = ['All', 'Anxiety', 'Sleep', 'Relationships', 'Wins 🎉', 'General'];
 
@@ -78,6 +80,8 @@ function mapPost(p, bookmarks) {
     category: p.category || 'General',
     title: p.title,
     body: p.content,
+    mediaUrl: p.mediaUrl || null,
+    mediaType: p.mediaType || null,
     tags: [],
     likes: p.likeCount || 0,
     liked: p.likedByMe || false,
@@ -106,6 +110,10 @@ export default function CommunityForum() {
   const [newTags, setNewTags] = useState('');
   const [newAnonymous, setNewAnonymous] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [media, setMedia] = useState(null); // { mediaUrl, mediaType }
+  const [mediaError, setMediaError] = useState('');
+  const [readingMedia, setReadingMedia] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Comment UI state
   const [openComments, setOpenComments] = useState({});
@@ -258,11 +266,19 @@ export default function CommunityForum() {
     const title = editPostTitle.trim();
     const content = editPostBody.trim();
     if (!title || !content) return;
+    // The inline editor doesn't change the attachment, so send the post's existing
+    // media back — otherwise the server would clear it on edit.
+    const existing = posts.find((p) => p.id === postId);
     try {
       const res = await fetch(`${API_BASE}/api/forum/posts/${postId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({
+          title,
+          content,
+          mediaUrl: existing?.mediaUrl || null,
+          mediaType: existing?.mediaType || null,
+        }),
       });
       if (res.ok) {
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, title, body: content } : p)));
@@ -310,6 +326,34 @@ export default function CommunityForum() {
 
   const canPost = newTitle.trim() && newBody.trim() && newCategory;
 
+  const pickMedia = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setMediaError('');
+    setReadingMedia(true);
+    try {
+      setMedia(await fileToPostMedia(file));
+    } catch (err) {
+      setMedia(null);
+      setMediaError(err.message || "Couldn't attach that file.");
+    } finally {
+      setReadingMedia(false);
+    }
+  };
+
+  const clearMedia = () => { setMedia(null); setMediaError(''); };
+
+  const resetComposer = () => {
+    setShowComposer(false);
+    setNewTitle('');
+    setNewBody('');
+    setNewCategory('');
+    setNewTags('');
+    setNewAnonymous(false);
+    clearMedia();
+  };
+
   const handleNewPost = async () => {
     if (!canPost || posting) return;
     if (!token()) { navigate('/signin'); return; }
@@ -323,17 +367,14 @@ export default function CommunityForum() {
           content: newBody.trim(),
           category: newCategory,
           isAnonymous: newAnonymous,
+          mediaUrl: media?.mediaUrl || null,
+          mediaType: media?.mediaType || null,
         }),
       });
       if (res.ok) {
         const created = await res.json();
         setPosts((prev) => [mapPost(created, loadBookmarks()), ...prev]);
-        setShowComposer(false);
-        setNewTitle('');
-        setNewBody('');
-        setNewCategory('');
-        setNewTags('');
-        setNewAnonymous(false);
+        resetComposer();
       }
     } catch (e) {}
     finally {
@@ -477,6 +518,22 @@ export default function CommunityForum() {
                       <h3 className="font-semibold mb-1.5">{post.title}</h3>
                       {post.body && (
                         <p className="text-sm text-[var(--text-muted)] mb-3 leading-relaxed">{post.body}</p>
+                      )}
+                      {post.mediaUrl && post.mediaType === 'image' && (
+                        <img
+                          src={post.mediaUrl}
+                          alt=""
+                          loading="lazy"
+                          className="mb-3 rounded-xl max-h-[26rem] w-auto max-w-full border border-[var(--border)]"
+                        />
+                      )}
+                      {post.mediaUrl && post.mediaType === 'video' && (
+                        <video
+                          src={post.mediaUrl}
+                          controls
+                          playsInline
+                          className="mb-3 rounded-xl max-h-[26rem] w-auto max-w-full border border-[var(--border)] bg-black"
+                        />
                       )}
                     </>
                   )}
@@ -661,7 +718,7 @@ export default function CommunityForum() {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold">New Post</h2>
               <button
-                onClick={() => setShowComposer(false)}
+                onClick={resetComposer}
                 className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors"
               >
                 <X size={20} />
@@ -684,6 +741,44 @@ export default function CommunityForum() {
               placeholder="Write freely — this is a safe space..."
               className="w-full bg-[var(--card-2)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)] resize-none mb-4"
             />
+
+            {/* Photo / video attachment */}
+            <label className="text-xs text-[var(--text-muted)] mb-1.5 block">Photo or video (optional)</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              onChange={pickMedia}
+              className="hidden"
+            />
+            {!media ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={readingMedia}
+                className="w-full flex items-center justify-center gap-2 py-3 mb-4 rounded-xl text-sm font-medium border border-dashed border-[var(--border)] bg-[var(--card-2)] text-[var(--text-muted)] hover:text-[var(--text-soft)] hover:border-indigo-500 transition-colors disabled:opacity-60"
+              >
+                <ImagePlus size={16} />
+                {readingMedia ? 'Attaching…' : 'Add a photo or video'}
+              </button>
+            ) : (
+              <div className="relative mb-4">
+                {media.mediaType === 'image' ? (
+                  <img src={media.mediaUrl} alt="" className="rounded-xl max-h-56 w-auto max-w-full border border-[var(--border)]" />
+                ) : (
+                  <video src={media.mediaUrl} controls playsInline className="rounded-xl max-h-56 w-auto max-w-full border border-[var(--border)] bg-black" />
+                )}
+                <button
+                  type="button"
+                  onClick={clearMedia}
+                  title="Remove attachment"
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+            {mediaError && <p className="text-xs text-rose-400 -mt-2 mb-4">{mediaError}</p>}
 
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
