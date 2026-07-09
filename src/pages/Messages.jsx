@@ -5,10 +5,11 @@ import NotificationBell from '../components/NotificationBell';
 import Avatar from '../components/Avatar';
 import {
   Search, Plus, Send, Users, ArrowLeft, MoreVertical, UserPlus,
-  Bell, BellOff, Ban, Flag, LogOut, X, MessageSquare, Shield,
+  Bell, BellOff, Ban, Flag, LogOut, X, MessageSquare, Shield, ImagePlus,
 } from 'lucide-react';
 
 import { API_BASE } from '../lib/api';
+import { fileToPostMedia } from '../lib/forumMedia';
 const WS_BASE = API_BASE.replace(/^http/, 'ws');
 const token = () => localStorage.getItem('mindspace_token');
 
@@ -35,6 +36,14 @@ function timeAgo(iso) {
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   if (s < 172800) return 'yesterday';
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+// Short preview for the conversation list — a media-only message has no text.
+function messagePreview(m) {
+  if (!m) return '';
+  if (m.content && m.content.trim()) return m.content;
+  if (m.mediaType === 'image') return '📷 Photo';
+  if (m.mediaType === 'video') return '🎥 Video';
+  return '';
 }
 function clockTime(iso) {
   if (!iso) return '';
@@ -77,6 +86,9 @@ export default function Messages() {
   const [active, setActive] = useState(null);       // ConversationDetail
   const [loadingConv, setLoadingConv] = useState(false);
   const [draft, setDraft] = useState('');
+  const [media, setMedia] = useState(null); // { mediaUrl, mediaType }
+  const [readingMedia, setReadingMedia] = useState(false);
+  const fileInputRef = useRef(null);
   const [error, setError] = useState('');
   const [sheet, setSheet] = useState(null);          // 'new' | 'group' | 'add' | null
   const [menuOpen, setMenuOpen] = useState(false);
@@ -95,6 +107,7 @@ export default function Messages() {
   const openConversation = useCallback(async (id) => {
     setLoadingConv(true);
     setMenuOpen(false);
+    setMedia(null); // don't carry a staged attachment into another chat
     try {
       const detail = await api(`/api/chat/conversations/${id}`);
       setActive(detail);
@@ -158,7 +171,7 @@ export default function Messages() {
         const bumpUnread = conversationId !== activeIdRef.current && !message.mine;
         copy[idx] = {
           ...copy[idx],
-          lastMessage: message.content,
+          lastMessage: messagePreview(message),
           lastMessageAt: message.createdAt,
           unread: bumpUnread ? (copy[idx].unread || 0) + 1 : copy[idx].unread,
         };
@@ -176,14 +189,34 @@ export default function Messages() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [active?.messages?.length, active?.id]);
 
+  const pickMedia = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setReadingMedia(true);
+    try {
+      setMedia(await fileToPostMedia(file));
+    } catch (err) {
+      setError(err.message || "Couldn't attach that file.");
+    } finally {
+      setReadingMedia(false);
+    }
+  };
+
   const send = async () => {
     const content = draft.trim();
-    if (!content || !active) return;
+    if ((!content && !media) || !active) return;
+    const attachment = media;
     setDraft('');
+    setMedia(null);
     try {
       const msg = await api(`/api/chat/conversations/${active.id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          mediaUrl: attachment?.mediaUrl || null,
+          mediaType: attachment?.mediaType || null,
+        }),
       });
       setActive((prev) => {
         if (!prev || prev.id !== active.id) return prev;
@@ -191,8 +224,8 @@ export default function Messages() {
         return { ...prev, messages: [...prev.messages, msg] };
       });
       setConversations((prev) => prev.map((c) =>
-        c.id === active.id ? { ...c, lastMessage: content, lastMessageAt: msg.createdAt } : c));
-    } catch (e) { setError(e.message); setDraft(content); }
+        c.id === active.id ? { ...c, lastMessage: messagePreview(msg), lastMessageAt: msg.createdAt } : c));
+    } catch (e) { setError(e.message); setDraft(content); setMedia(attachment); }
   };
 
   const doMenuAction = async (fn) => {
@@ -391,7 +424,29 @@ export default function Messages() {
                         <span className="text-[11px] text-[var(--text-dim)] mb-0.5 px-1">{m.senderName}</span>
                       )}
                       <div className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words ${m.mine ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-[var(--card-2)] text-[var(--text-soft)] rounded-bl-sm'}`}>
-                        {m.deleted ? <span className="italic opacity-70">Message deleted</span> : m.content}
+                        {m.deleted ? (
+                          <span className="italic opacity-70">Message deleted</span>
+                        ) : (
+                          <>
+                            {m.mediaUrl && m.mediaType === 'image' && (
+                              <img
+                                src={m.mediaUrl}
+                                alt=""
+                                loading="lazy"
+                                className={`rounded-xl max-h-72 w-auto max-w-full ${m.content ? 'mb-1.5' : ''}`}
+                              />
+                            )}
+                            {m.mediaUrl && m.mediaType === 'video' && (
+                              <video
+                                src={m.mediaUrl}
+                                controls
+                                playsInline
+                                className={`rounded-xl max-h-72 w-auto max-w-full bg-black ${m.content ? 'mb-1.5' : ''}`}
+                              />
+                            )}
+                            {m.content}
+                          </>
+                        )}
                       </div>
                       <span className="text-[10px] text-[var(--text-dim)] mt-0.5 px-1">{clockTime(m.createdAt)}</span>
                     </div>
@@ -402,17 +457,53 @@ export default function Messages() {
                 </div>
 
                 {/* Composer */}
-                <div className="p-3 border-t border-[var(--border)] flex items-center gap-2 shrink-0">
-                  <input
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                    placeholder="Type a message…"
-                    className="flex-1 bg-[var(--card-2)] border border-[var(--border)] rounded-full px-4 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)]"
-                  />
-                  <button onClick={send} disabled={!draft.trim()} className="w-11 h-11 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white flex items-center justify-center shrink-0 transition-colors">
-                    <Send size={17} />
-                  </button>
+                <div className="border-t border-[var(--border)] shrink-0">
+                  {/* Attachment preview */}
+                  {media && (
+                    <div className="px-3 pt-3">
+                      <div className="relative inline-block">
+                        {media.mediaType === 'image' ? (
+                          <img src={media.mediaUrl} alt="" className="rounded-xl max-h-40 w-auto border border-[var(--border)]" />
+                        ) : (
+                          <video src={media.mediaUrl} className="rounded-xl max-h-40 w-auto border border-[var(--border)] bg-black" />
+                        )}
+                        <button
+                          onClick={() => setMedia(null)}
+                          title="Remove attachment"
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-3 flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={pickMedia}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={readingMedia}
+                      title="Attach a photo or video"
+                      className="w-11 h-11 rounded-full bg-[var(--card-2)] border border-[var(--border)] hover:border-indigo-500 disabled:opacity-40 text-[var(--text-muted)] hover:text-[var(--text)] flex items-center justify-center shrink-0 transition-colors"
+                    >
+                      <ImagePlus size={18} />
+                    </button>
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                      placeholder={readingMedia ? 'Attaching…' : 'Type a message…'}
+                      className="flex-1 bg-[var(--card-2)] border border-[var(--border)] rounded-full px-4 py-2.5 text-sm outline-none placeholder-zinc-500 text-[var(--text)]"
+                    />
+                    <button onClick={send} disabled={!draft.trim() && !media} className="w-11 h-11 rounded-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white flex items-center justify-center shrink-0 transition-colors">
+                      <Send size={17} />
+                    </button>
+                  </div>
                 </div>
               </>
             )}
